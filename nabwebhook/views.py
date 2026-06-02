@@ -3,6 +3,25 @@ from django.shortcuts import render
 from django.views.generic import TemplateView
 
 from . import rfid_data
+from .models import Config
+
+
+class SettingsView(TemplateView):
+    template_name = "nabwebhook/settings.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["config"] = Config.load()
+        return context
+
+    def post(self, request, *args, **kwargs):
+        config = Config.load()
+        if "webhook_url" in request.POST:
+            config.webhook_url = request.POST["webhook_url"]
+        config.save()
+        context = super().get_context_data(**kwargs)
+        context["config"] = config
+        return render(request, SettingsView.template_name, context=context)
 
 
 class RFIDDataView(TemplateView):
