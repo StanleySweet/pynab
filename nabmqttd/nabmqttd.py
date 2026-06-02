@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import json
 import logging
-import socket
 import sys
 import uuid
 
@@ -10,7 +9,6 @@ import paho.mqtt.client as mqtt
 
 from nabcommon.nabservice import NabService
 
-from . import rfid_data
 
 
 def _get_mac():
@@ -103,10 +101,9 @@ def _choreography_to_mtl(choreo):
         r = int(colors[0].get("left", "000000")[0:2], 16) if colors else 0
         g = int(colors[0].get("left", "000000")[2:4], 16) if colors else 0
         b = int(colors[0].get("left", "000000")[4:6], 16) if colors else 0
-        frame_duration = 255
-        parts = [0, 1, frame_duration]
-        for _ in range(400):
-            parts.extend([0, 9, r, g, b, 255, 0])
+        parts = [0, 1, 1]
+        parts.extend([0, 9, r, g, b])
+        parts.extend([1, 0])
         parts.extend([0, 0])
     else:
         parts = []
@@ -628,33 +625,7 @@ class NabMqttd(NabService):
                 "icon": "mdi:radio-off",
             },
         )
-        publish_entity(
-            "light",
-            "leds",
-            {
-                "name": "LEDs",
-                "unique_id": f"{device_id}_leds",
-                "state_topic": f"{base_topic}leds/state",
-                "command_topic": f"{base_topic}leds/set",
-                "schema": "json",
-                "brightness": True,
-                "color_mode": True,
-                "supported_color_modes": ["rgb"],
-                "icon": "mdi:led-outline",
-            },
-        )
-        publish_entity(
-            "select",
-            "choreography",
-            {
-                "name": "Light Preset",
-                "unique_id": f"{device_id}_choreography",
-                "state_topic": f"{base_topic}choreography/state",
-                "command_topic": f"{base_topic}leds/set",
-                "options": list(_CHOREOGRAPHIES.keys()),
-                "icon": "mdi:palette",
-            },
-        )
+
         logging.info(f"Published HA discovery for device {device_id}")
 
     async def process_nabd_packet(self, packet):

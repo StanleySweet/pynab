@@ -6,6 +6,7 @@ import socket
 import threading
 import time
 import unittest
+from unittest.mock import patch
 
 import pytest
 from django.db import close_old_connections
@@ -56,6 +57,14 @@ class TestNabdBase(unittest.TestCase):
         close_old_connections()
 
     def setUp(self):
+        self._net_patch = patch(
+            "nabd.nabd.network.ip_address", return_value="192.168.1.1"
+        )
+        self._net_patch.start()
+        self._inet_patch = patch(
+            "nabd.nabd.network.internet_connection", return_value=True
+        )
+        self._inet_patch.start()
         self.nabd_cv = threading.Condition()
         with self.nabd_cv:
             self.nabd_thread = threading.Thread(target=self.nabd_thread_loop)
@@ -68,6 +77,8 @@ class TestNabdBase(unittest.TestCase):
         self.nabd_thread.join(10)
         if self.nabd_thread.is_alive():
             raise RuntimeError("nabd_thread still running")
+        self._net_patch.stop()
+        self._inet_patch.stop()
 
     def test_init(self):
         self.assertEqual(self.nabio.left_ear, 0)
@@ -639,6 +650,72 @@ class TestNabd(TestNabdBase):
         finally:
             s1.close()
             s2.close()
+
+
+    def test_message_cancel(self):
+        s1 = self.service_socket()
+        try:
+            packet = s1.readline()  # state packet
+            s1.write(
+                b'{"type":"message","request_id":"test_id",'
+                b'"signature":{"audio":["nabradio/signature.mp3"]},'
+                b'"body":[{"audio":["http://stream.example.com/radio"]}]}\r\n'
+            )
+            packet = s1.readline()  # new state packet
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "state")
+            self.assertEqual(packet_j["state"], "playing")
+            s1.write(b'{"type":"cancel","request_id":"test_id"}\r\n')
+            packet = s1.readline()  # response packet
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "response")
+            self.assertEqual(packet_j["request_id"], "test_id")
+            self.assertEqual(packet_j["status"], "canceled")
+            packet = s1.readline()  # new state packet
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "state")
+            self.assertEqual(packet_j["state"], "idle")
+        finally:
+            s1.close()
+
+    def test_queue_processes_next_after_cancel(self):
+        s1 = self.service_socket()
+        try:
+            packet = s1.readline()  # state packet
+            s1.write(
+                b'{"type":"message","request_id":"first",'
+                b'"signature":{"audio":["nabradio/signature.mp3"]},'
+                b'"body":[{"audio":["http://stream.example.com/radio"]}]}\r\n'
+            )
+            s1.write(
+                b'{"type":"command","request_id":"second",'
+                b'"sequence":[{"audio":['
+                b'"weather/fr/signature.mp3"],'
+                b'"choregraphy":"streaming"}]}\r\n'
+            )
+            packet = s1.readline()  # state: playing (first)
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "state")
+            self.assertEqual(packet_j["state"], "playing")
+            s1.write(b'{"type":"cancel","request_id":"first"}\r\n')
+            packet = s1.readline()  # response: canceled (first)
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "response")
+            self.assertEqual(packet_j["request_id"], "first")
+            self.assertEqual(packet_j["status"], "canceled")
+            s1.settimeout(15.0)
+            packet = s1.readline()  # response: ok (second)
+            s1.settimeout(5.0)
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "response")
+            self.assertEqual(packet_j["request_id"], "second")
+            self.assertEqual(packet_j["status"], "ok")
+            packet = s1.readline()  # state: idle
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "state")
+            self.assertEqual(packet_j["state"], "idle")
+        finally:
+            s1.close()
 
 
 @pytest.mark.django_db(transaction=True)
