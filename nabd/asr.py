@@ -1,3 +1,4 @@
+import logging
 import struct
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -45,13 +46,17 @@ class ASR:
 
     def _decode_chunk(self, frames, finalize):
         try:
-            nframes = len(frames) / 2
+            nframes = len(frames) // 2
+            if nframes <= 0:
+                logging.warning("No frames to decode")
+                return
+
             samples = struct.unpack_from("<%dh" % nframes, frames)
             self.decoder.decode(
                 16000, np.array(samples, dtype=np.float32), finalize
             )
         except Exception:
-            print(traceback.format_exc())
+            logging.error(traceback.format_exc())
 
     async def get_decoded_string(self, sync):
         if sync:
@@ -67,4 +72,4 @@ class ASR:
             str, likelihood = self.decoder.get_decoded_string()
             return str
         except Exception:
-            print(traceback.format_exc())
+            logging.error(traceback.format_exc())
