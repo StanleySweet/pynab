@@ -270,6 +270,10 @@ class NabMqttd(NabService):
                         ),
                         loop,
                     )
+                    base = self._get_topic("")
+                    client.publish(
+                        f"{base}ears/left/state", str(pos), retain=True
+                    )
             except ValueError:
                 pass
         elif topic.endswith("/ears/right/set"):
@@ -281,6 +285,10 @@ class NabMqttd(NabService):
                             json.dumps({"type": "ears", "right": pos})
                         ),
                         loop,
+                    )
+                    base = self._get_topic("")
+                    client.publish(
+                        f"{base}ears/right/state", str(pos), retain=True
                     )
             except ValueError:
                 pass

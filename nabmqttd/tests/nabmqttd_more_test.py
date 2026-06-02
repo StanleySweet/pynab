@@ -1,3 +1,4 @@
+import asyncio
 import json
 import sys
 import unittest
@@ -300,3 +301,76 @@ class TestMqttSettingsView(TestCase):
         self.assertEqual(response.status_code, 200)
         config = MqttConfig.load()
         self.assertEqual(config.broker_port, 8883)
+
+
+@pytest.mark.django_db(transaction=True)
+class TestOnMessageEarsSet(unittest.TestCase):
+    def setUp(self):
+        self.service = NabMqttd()
+        self.service.writer = MagicMock()
+        self.service.mqtt_client = MagicMock()
+        self.service._effective_device_id = "nabaztag_test"
+        self.service._topic_prefix = "nabaztag"
+        self.service.loop = asyncio.new_event_loop()
+
+    def tearDown(self):
+        self.service.loop.close()
+        close_old_async_connections()
+
+    def _make_msg(self, topic, payload):
+        msg = MagicMock()
+        msg.topic = topic
+        msg.payload = payload.encode("utf-8")
+        return msg
+
+    def test_ears_left_set_publishes_state(self):
+        msg = self._make_msg(
+            "nabaztag/nabaztag_test/ears/left/set", "10"
+        )
+        self.service._on_message(self.service.mqtt_client, None, msg)
+        self.service.mqtt_client.publish.assert_called_with(
+            "nabaztag/nabaztag_test/ears/left/state", "10", retain=True
+        )
+
+    def test_ears_right_set_publishes_state(self):
+        msg = self._make_msg(
+            "nabaztag/nabaztag_test/ears/right/set", "7"
+        )
+        self.service._on_message(self.service.mqtt_client, None, msg)
+        self.service.mqtt_client.publish.assert_called_with(
+            "nabaztag/nabaztag_test/ears/right/state", "7", retain=True
+        )
+
+    def test_ears_left_set_sends_to_nabd(self):
+        msg = self._make_msg(
+            "nabaztag/nabaztag_test/ears/left/set", "5"
+        )
+        with patch.object(self.service, "_send_to_nabd") as mock_send:
+            self.service._on_message(self.service.mqtt_client, None, msg)
+            mock_send.assert_called_once_with(
+                json.dumps({"type": "ears", "left": 5})
+            )
+
+    def test_ears_right_set_sends_to_nabd(self):
+        msg = self._make_msg(
+            "nabaztag/nabaztag_test/ears/right/set", "3"
+        )
+        with patch.object(self.service, "_send_to_nabd") as mock_send:
+            self.service._on_message(self.service.mqtt_client, None, msg)
+            mock_send.assert_called_once_with(
+                json.dumps({"type": "ears", "right": 3})
+            )
+
+    def test_ears_set_invalid_value_does_nothing(self):
+        msg = self._make_msg(
+            "nabaztag/nabaztag_test/ears/left/set", "abc"
+        )
+        self.service._on_message(self.service.mqtt_client, None, msg)
+        self.service.mqtt_client.publish.assert_not_called()
+
+    def test_ears_set_out_of_range_does_nothing(self):
+        msg = self._make_msg(
+            "nabaztag/nabaztag_test/ears/left/set", "42"
+        )
+        self.service._on_message(self.service.mqtt_client, None, msg)
+        self.service.mqtt_client.publish.assert_not_called()
