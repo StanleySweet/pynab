@@ -14,7 +14,7 @@ class NabRadio(NabService):
     async def reload_config(self):
         from .models import Config
 
-        config = Config.load()
+        config = await Config.load_async()
         if config.next_radio_date is not None:
             now = datetime.datetime.now(datetime.timezone.utc)
             if config.next_radio_url:
@@ -23,7 +23,7 @@ class NabRadio(NabService):
                 await self._stop_radio()
             config.next_radio_date = None
             config.next_radio_url = ""
-            config.save()
+            await config.save_async()
 
     async def _launch_radio(self, streaming_url):
         logging.info("streaming radio " + streaming_url)
