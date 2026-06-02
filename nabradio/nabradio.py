@@ -12,18 +12,34 @@ class NabRadio(NabService):
         super().__init__()
 
     async def reload_config(self):
-        pass
+        from .models import Config
+
+        config = Config.load()
+        if config.next_radio_date is not None:
+            now = datetime.datetime.now(datetime.timezone.utc)
+            if config.next_radio_url:
+                await self._launch_radio(config.next_radio_url)
+            else:
+                await self._stop_radio()
+            config.next_radio_date = None
+            config.next_radio_url = ""
+            config.save()
 
     async def _launch_radio(self, streaming_url):
         logging.info("streaming radio " + streaming_url)
         now = datetime.datetime.now(datetime.timezone.utc)
-        expiration = now + datetime.timedelta(minutes=1)
+        expiration = now + datetime.timedelta(minutes=5)
         packet = (
             f'{{"type":"message",'
             f'"signature":{{"audio":["nabradio/*.mp3"]}},'
             f'"body":[{{"audio":["{streaming_url}"]}}],'
             f'"expiration":"{expiration.isoformat()}"}}\r\n'
         )
+        self.writer.write(packet.encode("utf8"))
+        await self.writer.drain()
+
+    async def _stop_radio(self):
+        packet = '{"type":"cancel"}\r\n'
         self.writer.write(packet.encode("utf8"))
         await self.writer.drain()
 

@@ -1,9 +1,12 @@
+import datetime
+
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.generic import TemplateView
 
 from . import rfid_data
 from .models import Config
+from .nabradio import NabRadio
 
 
 class SettingsView(TemplateView):
@@ -22,6 +25,30 @@ class SettingsView(TemplateView):
         context = super().get_context_data(**kwargs)
         context["config"] = config
         return render(request, SettingsView.template_name, context=context)
+
+    def put(self, request, *args, **kwargs):
+        import json
+
+        data = json.loads(request.body)
+        action = data.get("action", "")
+        config = Config.load()
+        if action == "play":
+            url = data.get("url", config.streaming_url)
+            if url:
+                config.next_radio_date = datetime.datetime.now(
+                    datetime.timezone.utc
+                )
+                config.next_radio_url = url
+                config.save()
+                NabRadio.signal_daemon()
+        elif action == "stop":
+            config.next_radio_date = datetime.datetime.now(
+                datetime.timezone.utc
+            )
+            config.next_radio_url = ""
+            config.save()
+            NabRadio.signal_daemon()
+        return JsonResponse({"status": "ok"})
 
 
 class RFIDDataView(TemplateView):

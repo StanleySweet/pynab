@@ -12,6 +12,13 @@
           <input id="streaming_url" name="streaming_url" type="text" class="form-control" value="{{ config.streaming_url }}" placeholder="{% trans "Example: http://icecast.radiofrance.fr/fip-midfi.mp3" %}">
         </div>
       </div>
+      <div class="form-group row">
+        <label class="col-6 col-form-label">{% trans "Controls" %}</label>
+        <div class="col-6">
+          <button type="button" class="btn btn-primary play-button">{% trans "Play" %}</button>
+          <button type="button" class="btn btn-primary stop-button">{% trans "Stop" %}</button>
+        </div>
+      </div>
       <p>{% trans "You can also configure radio stations on NFC tags via the RFID section." %}</p>
     </div>
     <div class="card-footer">
@@ -49,6 +56,47 @@
       $.get(url, function(data) {
         $("#nabradio-settings").replaceWith(data);
       });
+    });
+    form.find('button.play-button').on("click", function() {
+      var btn = $(this);
+      btn.addClass('disabled');
+      var streamingUrl = form.find('input[name="streaming_url"]').val();
+      $.ajax({
+        url: url,
+        beforeSend: function (xhr, settings) {
+          xhr.setRequestHeader("X-CSRFToken", form.find('input[name="csrfmiddlewaretoken"]').val());
+        },
+        data: JSON.stringify({"action": "play", "url": streamingUrl}),
+        method: "PUT",
+        contentType: "application/json",
+        success: function (data) {
+          btn.removeClass('disabled');
+        },
+        error: function () {
+          btn.removeClass('disabled');
+        }
+      });
+      return false;
+    });
+    form.find('button.stop-button').on("click", function() {
+      var btn = $(this);
+      btn.addClass('disabled');
+      $.ajax({
+        url: url,
+        beforeSend: function (xhr, settings) {
+          xhr.setRequestHeader("X-CSRFToken", form.find('input[name="csrfmiddlewaretoken"]').val());
+        },
+        data: JSON.stringify({"action": "stop"}),
+        method: "PUT",
+        contentType: "application/json",
+        success: function (data) {
+          btn.removeClass('disabled');
+        },
+        error: function () {
+          btn.removeClass('disabled');
+        }
+      });
+      return false;
     });
   });
   </script>
