@@ -660,7 +660,7 @@ class NabMqttd(NabService):
                     if pos is not None:
                         client.publish(f"{base}ears/{ear}/state", str(pos))
             elif ptype == "state":
-                client.publish(f"{base}state", packet.get("state", ""))
+                client.publish(f"{base}state", json.dumps(packet))
         except Exception as e:
             logging.error(f"Failed to publish to MQTT: {e}")
 

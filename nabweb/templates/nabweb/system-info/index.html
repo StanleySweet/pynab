@@ -82,6 +82,20 @@
             <dd class="col-sm-8">{{ gestalt.result.uptime|duration }}</dd>
             <dt class="col-sm-4">{% trans "Clients (including website)" %}</dt>
             <dd class="col-sm-8">{{ gestalt.result.connections }}</dd>
+            {% if gestalt.result.playing_request_id %}
+            <dt class="col-sm-4">{% trans "Playing" %}</dt>
+            <dd class="col-sm-8">{{ gestalt.result.playing_request_id }}</dd>
+            {% endif %}
+            {% if gestalt.result.info_ids %}
+            <dt class="col-sm-4">{% trans "Info animations" %}</dt>
+            <dd class="col-sm-8">{{ gestalt.result.info_ids|join:", " }}</dd>
+            {% endif %}
+            {% if gestalt.result.ears %}
+            <dt class="col-sm-4">{% trans "Left ear" %}</dt>
+            <dd class="col-sm-8">{{ gestalt.result.ears.left }}</dd>
+            <dt class="col-sm-4">{% trans "Right ear" %}</dt>
+            <dd class="col-sm-8">{{ gestalt.result.ears.right }}</dd>
+            {% endif %}
           </dl>
           {% endif %}
         </div>

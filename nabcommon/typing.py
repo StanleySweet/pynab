@@ -14,7 +14,7 @@ _Number = Union[int, float]
 NLUIntent = Dict[str, Any]
 
 if sys.version_info < (3, 8):
-    StatePacket = Dict[str, str]
+    StatePacket = Dict[str, Any]
     AnimationItem = Dict[str, Color]
     Animation = Dict[str, Any]
     InfoPacket = Dict[str, Any]
@@ -77,9 +77,12 @@ else:
         "asleep", "idle", "interactive", "playing", "recording"
     ]
 
-    class StatePacket(TypedDict):
+    class StatePacket(TypedDict, total=False):
         type: Literal["state"]
         state: StateName
+        playing_request_id: str
+        info_ids: List[str]
+        ears: Dict[str, int]
 
     class _InfoPacketBase(TypedDict):
         type: Literal["info"]
@@ -261,6 +264,9 @@ else:
         _ResponseGestaltPacketProtoBase, total=False
     ):
         uptime: int
+        playing_request_id: str
+        info_ids: List[str]
+        ears: Dict[str, int]
 
     class _ResponseGestaltPacketBase(ResponseGestaltPacketProto):
         type: Literal["response"]

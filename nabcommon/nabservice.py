@@ -124,6 +124,7 @@ class NabService(ABC):
 
     def run(self):
         self.connect()
+        nablogging.setup_asyncio_logging(self.loop)
         service_task = self.start_service_loop(self.loop)
         try:
             self.loop.run_forever()

@@ -44,6 +44,7 @@ from nabcommon.typing import (
     ServicePacket,
     ServiceRequestPacket,
     SleepPacket,
+    StatePacket,
     TestPacket,
 )
 
@@ -680,6 +681,14 @@ class Nabd:
             "connections": len(self.service_writers),
             "hardware": await self.nabio.gestalt(),
         }
+        if self.playing_request_id is not None:
+            response["playing_request_id"] = self.playing_request_id
+        if self.info:
+            response["info_ids"] = list(self.info.keys())
+        response["ears"] = {
+            "left": self.ears["left"],
+            "right": self.ears["right"],
+        }
         if proc.stdout:
             results = proc.stdout.readlines()
             uptime = int(results[0].strip())
@@ -944,7 +953,19 @@ class Nabd:
             self.write_state_packet(sw)
 
     def write_state_packet(self, writer: asyncio.StreamWriter):
-        self.write_packet({"type": "state", "state": self.state.value}, writer)
+        packet: StatePacket = {
+            "type": "state",
+            "state": self.state.value,
+        }
+        if self.playing_request_id is not None:
+            packet["playing_request_id"] = self.playing_request_id
+        if self.info:
+            packet["info_ids"] = list(self.info.keys())
+        packet["ears"] = {
+            "left": self.ears["left"],
+            "right": self.ears["right"],
+        }
+        self.write_packet(packet, writer)
 
     # Handle service through TCP/IP protocol
     async def service_loop(
@@ -1209,6 +1230,7 @@ class Nabd:
 
     def run(self):
         self.loop = asyncio.get_event_loop()
+        nablogging.setup_asyncio_logging(self.loop)
         self.nabio.bind_button_event(self.loop, self.button_callback)
         self.nabio.bind_ears_event(self.loop, self.ears_callback)
         self.nabio.bind_rfid_event(self.loop, self.rfid_callback)
