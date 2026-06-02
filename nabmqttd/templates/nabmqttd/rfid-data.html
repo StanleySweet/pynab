@@ -1,0 +1,11 @@
+{% load i18n %}
+<!-- {% trans "MQTT" %} -->
+{% trans "When Nabaztag sees that NFC tag, it will publish a JSON event to the MQTT topic specified below." %}
+<p>
+<div class="form-group row">
+  <label for="mqtt_topic" class="col-6 col-form-label">{% trans "MQTT topic suffix:" %}</label>
+  <div class="col-6">
+    <input id="mqtt_topic" name="mqtt_topic" type="text" class="form-control" value="{{ mqtt_topic }}" placeholder="{% trans "events/my_tag" %}">
+    <input id="mqtt_uid" name="mqtt_uid" type="hidden" class="form-control" value="{{ mqtt_uid }}">
+  </div>
+</div>
