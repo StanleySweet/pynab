@@ -26,7 +26,7 @@ def _get_mac():
 def _build_device_info(device_id):
     return {
         "identifiers": [device_id],
-        "name": f"Nabaztag ({device_id})",
+        "name": "Nabaztag",
         "model": "Nabaztag",
         "manufacturer": "Nabaztag",
         "sw_version": "pynab",
