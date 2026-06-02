@@ -99,8 +99,6 @@ def _choreography_to_base64(choreo):
 def _choreography_to_mtl(choreo):
     tempo = choreo.get("tempo", 10)
     colors = choreo.get("colors", [])
-    parts = []
-    parts.extend([0, 1, tempo])
     if choreo.get("persist", False):
         r = int(colors[0].get("left", "000000")[0:2], 16) if colors else 0
         g = int(colors[0].get("left", "000000")[2:4], 16) if colors else 0
@@ -111,6 +109,8 @@ def _choreography_to_mtl(choreo):
             parts.extend([0, 9, r, g, b, 255, 0])
         parts.extend([0, 0])
     else:
+        parts = []
+        parts.extend([0, 1, tempo])
         for c in colors:
             r = int(c.get("left", "000000")[0:2], 16)
             g = int(c.get("left", "000000")[2:4], 16)
@@ -144,6 +144,7 @@ class NabMqttd(NabService):
         self.config = None
         self.loop = None
         self._effective_device_id = ""
+        self._radio_active = False
 
     async def reload_config(self):
         logging.info("reloading configuration")
@@ -228,6 +229,9 @@ class NabMqttd(NabService):
         self._publish_lwt_online()
         self._subscribe_command_topics()
         self._publish_ha_discovery()
+        base_topic = self._get_topic("")
+        client.publish(f"{base_topic}ears/left/state", "0", retain=True)
+        client.publish(f"{base_topic}ears/right/state", "0", retain=True)
 
     def _on_disconnect(self, client, userdata, rc):
         self.mqtt_connected = False
@@ -239,8 +243,418 @@ class NabMqttd(NabService):
 
     def _subscribe_command_topics(self):
         client = self.mqtt_client
-        client.publish(f"{base_topic}ears/left/state", "0", retain=True)
-        client.publish(f"{base_topic}ears/right/state", "0", retain=True)
+        base = self._get_topic("")
+        client.subscribe(f"{base}ears/left/set")
+        client.subscribe(f"{base}ears/right/set")
+        client.subscribe(f"{base}leds/set")
+        client.subscribe(f"{base}action/#")
+        client.subscribe(f"{base}mode/set")
+        client.subscribe(f"{base}command/#")
+        logging.info(f"Subscribed to MQTT topics under {base}")
+
+    def _on_message(self, client, userdata, msg):
+        topic = msg.topic
+        try:
+            payload = msg.payload.decode("utf-8")
+        except Exception:
+            return
+        loop = self.loop
+        if loop is None:
+            return
+        logging.debug(f"MQTT message: {topic} = {payload}")
+
+        if topic.endswith("/ears/left/set"):
+            try:
+                pos = int(payload.strip())
+                if 0 <= pos <= 16:
+                    asyncio.run_coroutine_threadsafe(
+                        self._send_to_nabd(
+                            json.dumps({"type": "ears", "left": pos})
+                        ),
+                        loop,
+                    )
+            except ValueError:
+                pass
+        elif topic.endswith("/ears/right/set"):
+            try:
+                pos = int(payload.strip())
+                if 0 <= pos <= 16:
+                    asyncio.run_coroutine_threadsafe(
+                        self._send_to_nabd(
+                            json.dumps({"type": "ears", "right": pos})
+                        ),
+                        loop,
+                    )
+            except ValueError:
+                pass
+        elif topic.endswith("/leds/set"):
+            self._handle_leds_set(payload, loop)
+        elif topic.endswith("/action/sleep"):
+            asyncio.run_coroutine_threadsafe(
+                self._send_to_nabd(json.dumps({"type": "sleep"})), loop
+            )
+        elif topic.endswith("/action/wake"):
+            asyncio.run_coroutine_threadsafe(
+                self._send_to_nabd(json.dumps({"type": "wakeup"})), loop
+            )
+        elif topic.endswith("/action/weather"):
+            asyncio.run_coroutine_threadsafe(
+                self._trigger_service("nabweatherd", "today"), loop
+            )
+        elif topic.endswith("/action/airquality"):
+            asyncio.run_coroutine_threadsafe(
+                self._trigger_service("nabairqualityd", "today"), loop
+            )
+        elif topic.endswith("/action/taichi"):
+            asyncio.run_coroutine_threadsafe(self._trigger_taichi(), loop)
+        elif topic.endswith("/action/radio/stop"):
+            asyncio.run_coroutine_threadsafe(
+                self._stop_radio(), loop
+            )
+        elif topic.endswith("/action/radio"):
+            if self._radio_active:
+                return
+            asyncio.run_coroutine_threadsafe(
+                self._trigger_radio(payload), loop
+            )
+        elif topic.endswith("/mode/set"):
+            mode = payload.strip()
+            asyncio.run_coroutine_threadsafe(
+                self._send_to_nabd(json.dumps({"type": "mode", "mode": mode})),
+                loop,
+            )
+        elif "/command/" in topic:
+            asyncio.run_coroutine_threadsafe(
+                self._send_to_nabd(payload), loop
+            )
+
+    def _handle_leds_set(self, payload, loop):
+        try:
+            data = json.loads(payload)
+        except json.JSONDecodeError:
+            data = payload.strip()
+
+        if isinstance(data, str):
+            data = {"preset": data}
+
+        if "preset" in data:
+            preset_name = data["preset"]
+            choreo = _CHOREOGRAPHIES.get(preset_name)
+            if choreo:
+                self._send_choreo(choreo, loop)
+            return
+        elif "state" in data and data.get("state") == "OFF":
+            self._send_choreo(_CHOREOGRAPHIES["off"], loop)
+        elif "state" in data and data.get("state") == "ON":
+            color = data.get("color", {})
+            r = color.get("r", 255)
+            g = color.get("g", 255)
+            b = color.get("b", 255)
+            brightness = data.get("brightness", 255)
+            self._send_choreo(_rgb_to_choreography(r, g, b, brightness), loop)
+
+    def _send_choreo(self, choreo, loop):
+        choreo_b64 = _choreography_to_base64(choreo)
+        packet = json.dumps(
+            {
+                "type": "command",
+                "sequence": [
+                    {
+                        "choreography": "data:application/"
+                        "x-nabaztag-mtl-choreography;base64,"
+                        + choreo_b64
+                    }
+                ],
+            }
+        )
+        asyncio.run_coroutine_threadsafe(
+            self._send_to_nabd(packet), loop
+        )
+
+    async def _send_to_nabd(self, payload: str):
+        if self.writer is None:
+            return
+        try:
+            self.writer.write((payload + "\r\n").encode("utf-8"))
+            await self.writer.drain()
+        except Exception as e:
+            logging.error(f"Failed to send to nabd: {e}")
+
+    async def _trigger_service(self, service_name: str, type: str):
+        try:
+            if service_name == "nabweatherd":
+                from nabweatherd.models import Config as WeatherConfig
+                from nabweatherd.nabweatherd import NabWeatherd
+
+                cfg = await WeatherConfig.load_async()
+                cfg.next_performance_date = datetime.datetime.now(
+                    datetime.timezone.utc
+                )
+                cfg.next_performance_type = type
+                await cfg.save_async()
+                NabWeatherd.signal_daemon()
+            elif service_name == "nabairqualityd":
+                from nabairqualityd.models import Config as AQConfig
+                from nabairqualityd.nabairqualityd import NabAirqualityd
+
+                cfg = await AQConfig.load_async()
+                cfg.next_performance_date = datetime.datetime.now(
+                    datetime.timezone.utc
+                )
+                cfg.next_performance_type = type
+                await cfg.save_async()
+                NabAirqualityd.signal_daemon()
+        except Exception as e:
+            logging.error(f"Failed to trigger {service_name}: {e}")
+
+    async def _trigger_taichi(self):
+        try:
+            from nabtaichid.models import Config as TaiChiConfig
+            from nabtaichid.nabtaichid import NabTaichid
+
+            cfg = await TaiChiConfig.load_async()
+            cfg.next_taichi = datetime.datetime.now(datetime.timezone.utc)
+            await cfg.save_async()
+            NabTaichid.signal_daemon()
+        except Exception as e:
+            logging.error(f"Failed to trigger taichi: {e}")
+
+    async def _trigger_radio(self, url: str = ""):
+        if not url:
+            from . import models
+
+            cfg = models.Config.load()
+            url = cfg.default_radio_url or ""
+        if url:
+            now = datetime.datetime.now(datetime.timezone.utc)
+            expiration = now + datetime.timedelta(minutes=5)
+            packet = (
+                '{"type":"message",'
+                '"request_id":"nabradio",'
+                '"signature":{"audio":["nabradio/*.mp3"]},'
+                '"body":[{"audio":["'
+                + url
+                + '"]}],'
+                '"expiration":"' + expiration.isoformat() + '"}\r\n'
+            )
+            await self._send_to_nabd(packet)
+            self._radio_active = True
+
+    async def _stop_radio(self):
+        packet = '{"type":"cancel","request_id":"nabradio"}\r\n'
+        await self._send_to_nabd(packet)
+        self._radio_active = False
+
+    def _publish_ha_discovery(self):
+        client = self.mqtt_client
+        if not client:
+            return
+        device_id = self._effective_device_id
+        dp = self._discovery_prefix
+        base_topic = self._get_topic("")
+        device_info = _build_device_info(device_id)
+
+        def publish_entity(domain, name, config):
+            topic = f"{dp}/{domain}/{device_id}/{name}/config"
+            config["device"] = device_info
+            client.publish(topic, json.dumps(config), retain=True)
+
+        publish_entity(
+            "sensor",
+            "left_ear",
+            {
+                "name": "Left Ear",
+                "unique_id": f"{device_id}_left_ear",
+                "state_topic": f"{base_topic}ears/left/state",
+                "icon": "mdi:paw",
+            },
+        )
+        publish_entity(
+            "sensor",
+            "right_ear",
+            {
+                "name": "Right Ear",
+                "unique_id": f"{device_id}_right_ear",
+                "state_topic": f"{base_topic}ears/right/state",
+                "icon": "mdi:paw",
+            },
+        )
+        publish_entity(
+            "number",
+            "ear_left",
+            {
+                "name": "Left Ear Position",
+                "unique_id": f"{device_id}_set_left_ear",
+                "state_topic": f"{base_topic}ears/left/state",
+                "command_topic": f"{base_topic}ears/left/set",
+                "min": 0,
+                "max": 16,
+                "step": 1,
+                "mode": "slider",
+                "icon": "mdi:paw",
+            },
+        )
+        publish_entity(
+            "number",
+            "ear_right",
+            {
+                "name": "Right Ear Position",
+                "unique_id": f"{device_id}_set_right_ear",
+                "state_topic": f"{base_topic}ears/right/state",
+                "command_topic": f"{base_topic}ears/right/set",
+                "min": 0,
+                "max": 16,
+                "step": 1,
+                "mode": "slider",
+                "icon": "mdi:paw",
+            },
+        )
+        publish_entity(
+            "sensor",
+            "button",
+            {
+                "name": "Button",
+                "unique_id": f"{device_id}_button",
+                "state_topic": f"{base_topic}events/button",
+                "icon": "mdi:gesture-tap",
+            },
+        )
+        publish_entity(
+            "sensor",
+            "rfid",
+            {
+                "name": "RFID Tag",
+                "unique_id": f"{device_id}_rfid",
+                "state_topic": f"{base_topic}events/rfid",
+                "icon": "mdi:nfc",
+            },
+        )
+        publish_entity(
+            "sensor",
+            "asr",
+            {
+                "name": "Voice Command",
+                "unique_id": f"{device_id}_asr",
+                "state_topic": f"{base_topic}events/asr",
+                "icon": "mdi:microphone",
+            },
+        )
+        publish_entity(
+            "binary_sensor",
+            "online",
+            {
+                "name": "Online",
+                "unique_id": f"{device_id}_online",
+                "state_topic": f"{base_topic}status",
+                "payload_on": "online",
+                "payload_off": "offline",
+                "device_class": "connectivity",
+            },
+        )
+        publish_entity(
+            "button",
+            "sleep",
+            {
+                "name": "Sleep",
+                "unique_id": f"{device_id}_sleep",
+                "command_topic": f"{base_topic}action/sleep",
+                "payload_press": "",
+                "icon": "mdi:sleep",
+            },
+        )
+        publish_entity(
+            "button",
+            "wake",
+            {
+                "name": "Wake",
+                "unique_id": f"{device_id}_wake",
+                "command_topic": f"{base_topic}action/wake",
+                "payload_press": "",
+                "icon": "mdi:weather-night",
+            },
+        )
+        publish_entity(
+            "button",
+            "weather",
+            {
+                "name": "Weather Forecast",
+                "unique_id": f"{device_id}_weather",
+                "command_topic": f"{base_topic}action/weather",
+                "payload_press": "",
+                "icon": "mdi:weather-partly-cloudy",
+            },
+        )
+        publish_entity(
+            "button",
+            "airquality",
+            {
+                "name": "Air Quality",
+                "unique_id": f"{device_id}_airquality",
+                "command_topic": f"{base_topic}action/airquality",
+                "payload_press": "",
+                "icon": "mdi:air-filter",
+            },
+        )
+        publish_entity(
+            "button",
+            "taichi",
+            {
+                "name": "Tai Chi",
+                "unique_id": f"{device_id}_taichi",
+                "command_topic": f"{base_topic}action/taichi",
+                "payload_press": "",
+                "icon": "mdi:meditation",
+            },
+        )
+        publish_entity(
+            "button",
+            "radio",
+            {
+                "name": "Play Radio",
+                "unique_id": f"{device_id}_radio",
+                "command_topic": f"{base_topic}action/radio",
+                "payload_press": "",
+                "icon": "mdi:radio",
+            },
+        )
+        publish_entity(
+            "button",
+            "radio_stop",
+            {
+                "name": "Stop Radio",
+                "unique_id": f"{device_id}_radio_stop",
+                "command_topic": f"{base_topic}action/radio/stop",
+                "payload_press": "",
+                "icon": "mdi:radio-off",
+            },
+        )
+        publish_entity(
+            "light",
+            "leds",
+            {
+                "name": "LEDs",
+                "unique_id": f"{device_id}_leds",
+                "state_topic": f"{base_topic}leds/state",
+                "command_topic": f"{base_topic}leds/set",
+                "schema": "json",
+                "brightness": True,
+                "color_mode": True,
+                "supported_color_modes": ["rgb"],
+                "icon": "mdi:led-outline",
+            },
+        )
+        publish_entity(
+            "select",
+            "choreography",
+            {
+                "name": "Light Preset",
+                "unique_id": f"{device_id}_choreography",
+                "state_topic": f"{base_topic}choreography/state",
+                "command_topic": f"{base_topic}leds/set",
+                "options": list(_CHOREOGRAPHIES.keys()),
+                "icon": "mdi:palette",
+            },
+        )
         logging.info(f"Published HA discovery for device {device_id}")
 
     async def process_nabd_packet(self, packet):

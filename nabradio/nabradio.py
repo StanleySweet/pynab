@@ -31,6 +31,7 @@ class NabRadio(NabService):
         expiration = now + datetime.timedelta(minutes=5)
         packet = (
             f'{{"type":"message",'
+            f'"request_id":"nabradio",'
             f'"signature":{{"audio":["nabradio/*.mp3"]}},'
             f'"body":[{{"audio":["{streaming_url}"]}}],'
             f'"expiration":"{expiration.isoformat()}"}}\r\n'
@@ -39,7 +40,7 @@ class NabRadio(NabService):
         await self.writer.drain()
 
     async def _stop_radio(self):
-        packet = '{"type":"cancel"}\r\n'
+        packet = '{"type":"cancel","request_id":"nabradio"}\r\n'
         self.writer.write(packet.encode("utf8"))
         await self.writer.drain()
 
