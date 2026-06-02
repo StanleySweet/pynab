@@ -99,14 +99,15 @@ def _choreography_to_base64(choreo):
 def _choreography_to_mtl(choreo):
     tempo = choreo.get("tempo", 10)
     colors = choreo.get("colors", [])
-    parts = [len(colors), tempo]
+    parts = []
+    parts.extend([0, 1, tempo])
     for c in colors:
-        for k in ("left", "center", "right"):
-            color = c.get(k, "000000")
-            r = int(color[0:2], 16)
-            g = int(color[2:4], 16)
-            b = int(color[4:6], 16)
-            parts.extend([r, g, b])
+        r = int(c.get("left", "000000")[0:2], 16)
+        g = int(c.get("left", "000000")[2:4], 16)
+        b = int(c.get("left", "000000")[4:6], 16)
+        parts.extend([0, 9, r, g, b])
+        parts.extend([tempo, 0])
+    parts.extend([0, 0])
     return bytes(parts)
 
 
@@ -311,86 +312,44 @@ class NabMqttd(NabService):
         try:
             data = json.loads(payload)
         except json.JSONDecodeError:
-            data = {"choreography": payload}
+            data = payload.strip()
 
-        if "choreography" in data:
-            choreo_b64 = data["choreography"]
-            packet = json.dumps(
-                {
-                    "type": "command",
-                    "sequence": [
-                        {
-                            "choreography": "data:application/"
-                            "x-nabaztag-mtl-choreography;base64,"
-                            + choreo_b64
-                        }
-                    ],
-                }
-            )
-            asyncio.run_coroutine_threadsafe(
-                self._send_to_nabd(packet), loop
-            )
+        if isinstance(data, str):
+            data = {"preset": data}
+
+        if "preset" in data:
+            preset_name = data["preset"]
+            choreo = _CHOREOGRAPHIES.get(preset_name)
+            if choreo:
+                self._send_choreo(choreo, loop)
+            return
         elif "state" in data and data.get("state") == "OFF":
-            choreo = _CHOREOGRAPHIES["off"]
-            choreo_b64 = _choreography_to_base64(choreo)
-            packet = json.dumps(
-                {
-                    "type": "command",
-                    "sequence": [
-                        {
-                            "choreography": "data:application/"
-                            "x-nabaztag-mtl-choreography;base64,"
-                            + choreo_b64
-                        }
-                    ],
-                }
-            )
-            asyncio.run_coroutine_threadsafe(
-                self._send_to_nabd(packet), loop
-            )
+            self._send_choreo(_CHOREOGRAPHIES["off"], loop)
         elif "state" in data and data.get("state") == "ON":
             color = data.get("color", {})
             r = color.get("r", 255)
             g = color.get("g", 255)
             b = color.get("b", 255)
             brightness = data.get("brightness", 255)
-            choreo = _rgb_to_choreography(r, g, b, brightness)
-            choreo_b64 = _choreography_to_base64(choreo)
-            packet = json.dumps(
-                {
-                    "type": "command",
-                    "sequence": [
-                        {
-                            "choreography": "data:application/"
-                            "x-nabaztag-mtl-choreography;base64,"
-                            + choreo_b64
-                        }
-                    ],
-                }
-            )
-            asyncio.run_coroutine_threadsafe(
-                self._send_to_nabd(packet), loop
-            )
-        elif "preset" in data:
-            preset_name = data["preset"]
-            if preset_name in _CHOREOGRAPHIES:
-                choreo = _CHOREOGRAPHIES[preset_name]
-                choreo_b64 = _choreography_to_base64(choreo)
-                packet = json.dumps(
+            self._send_choreo(_rgb_to_choreography(r, g, b, brightness), loop)
+
+    def _send_choreo(self, choreo, loop):
+        choreo_b64 = _choreography_to_base64(choreo)
+        packet = json.dumps(
+            {
+                "type": "command",
+                "sequence": [
                     {
-                        "type": "command",
-                        "sequence": [
-                            {
-                                "choreography": "data:application/"
-                                "x-nabaztag-mtl-choreography;base64,"
-                                + choreo_b64
-                            }
-                        ],
+                        "choreography": "data:application/"
+                        "x-nabaztag-mtl-choreography;base64,"
+                        + choreo_b64
                     }
-                )
-                asyncio.run_coroutine_threadsafe(
-                    self._send_to_nabd(packet), loop
-                )
+                ],
+            }
+        )
+        asyncio.run_coroutine_threadsafe(
+            self._send_to_nabd(packet), loop
+        )
 
     async def _send_to_nabd(self, payload: str):
         if self.writer is None:
