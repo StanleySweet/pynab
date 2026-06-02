@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import random
 import sys
@@ -488,14 +489,20 @@ class NabWeatherd(NabInfoService):
         ):
 
             if info_data["next_rain"] is True:
-                packet = (
-                    '{"type":"info",'
-                    '"info_id":"nabweatherd_rain",'
-                    '"animation":' + self.RAIN_ONE_HOUR + "}\r\n"
+                packet = json.dumps(
+                    {
+                        "type": "info",
+                        "info_id": "nabweatherd_rain",
+                        "animation": self.RAIN_ONE_HOUR,
+                    },
+                    ensure_ascii=False,
                 )
             else:
-                packet = '{"type":"info",' '"info_id":"nabweatherd_rain"}\r\n'
-            self.writer.write(packet.encode("utf8"))
+                packet = json.dumps(
+                    {"type": "info", "info_id": "nabweatherd_rain"},
+                    ensure_ascii=False,
+                )
+            self.writer.write(packet.encode("utf8") + b"\r\n")
 
         # Weather
         if (info_data["weather_animation_type"] == "weather_and_rain") or (
@@ -504,18 +511,28 @@ class NabWeatherd(NabInfoService):
 
             # si weather on supprime l'animation rain
             if info_data["weather_animation_type"] == "weather_only":
-                packet = '{"type":"info",' '"info_id":"nabweatherd_rain"}\r\n'
-                self.writer.write(packet.encode("utf8"))
+                packet = json.dumps(
+                    {"type": "info", "info_id": "nabweatherd_rain"},
+                    ensure_ascii=False,
+                )
+                self.writer.write(packet.encode("utf8") + b"\r\n")
 
+            weather_class = info_data["today_forecast_weather_class"]
+            if weather_class is None or weather_class not in NabWeatherd.WEATHER_CLASSES:
+                logging.warning(f"unexpected weather class for animation: {weather_class}")
+                return None
             (weather_class, info_animation) = NabWeatherd.WEATHER_CLASSES[
-                info_data["today_forecast_weather_class"]
+                weather_class
             ]
             return info_animation
 
         if info_data["weather_animation_type"] == "nothing":
             # Return mais avant on supprime l'animation rain
-            packet = '{"type":"info",' '"info_id":"nabweatherd_rain"}\r\n'
-            self.writer.write(packet.encode("utf8"))
+            packet = json.dumps(
+                {"type": "info", "info_id": "nabweatherd_rain"},
+                ensure_ascii=False,
+            )
+            self.writer.write(packet.encode("utf8") + b"\r\n")
             logging.debug("get_animation: no visual information")
             return None
 
@@ -530,53 +547,86 @@ class NabWeatherd(NabInfoService):
         ) = config_t
         if location is None:
             logging.debug("No location (service is unconfigured)")
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":['
-                '"nabweatherd/signature.mp3"]},'
-                '"body":[{"audio":["nabweatherd/no-location-error.mp3"]}],'
-                '"expiration":"' + expiration.isoformat() + '"}\r\n'
+            packet = json.dumps(
+                {
+                    "type": "message",
+                    "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                    "body": [
+                        {"audio": ["nabweatherd/no-location-error.mp3"]}
+                    ],
+                    "expiration": expiration.isoformat(),
+                },
+                ensure_ascii=False,
             )
-            self.writer.write(packet.encode("utf8"))
+            self.writer.write(packet.encode("utf8") + b"\r\n")
         elif info_data is None:
             logging.debug("No data available")
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":['
-                '"nabweatherd/signature.mp3"]},'
-                '"body":[{"audio":["nabweatherd/no-data-error.mp3"]}],'
-                '"expiration":"' + expiration.isoformat() + '"}\r\n'
+            packet = json.dumps(
+                {
+                    "type": "message",
+                    "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                    "body": [
+                        {"audio": ["nabweatherd/no-data-error.mp3"]}
+                    ],
+                    "expiration": expiration.isoformat(),
+                },
+                ensure_ascii=False,
             )
-            self.writer.write(packet.encode("utf8"))
+            self.writer.write(packet.encode("utf8") + b"\r\n")
         else:
             if type == "today":
-                (weather_class, info_animation) = NabWeatherd.WEATHER_CLASSES[
-                    info_data["today_forecast_weather_class"]
-                ]
+                weather_class_key = info_data["today_forecast_weather_class"]
                 max_temp = info_data["today_forecast_max_temp"]
             elif type == "tomorrow":
-                (weather_class, info_animation) = NabWeatherd.WEATHER_CLASSES[
-                    info_data["tomorrow_forecast_weather_class"]
-                ]
+                weather_class_key = info_data["tomorrow_forecast_weather_class"]
                 max_temp = info_data["tomorrow_forecast_max_temp"]
             else:
                 logging.debug(f"Unknown type {type}")
                 return
+            if weather_class_key is None or weather_class_key not in NabWeatherd.WEATHER_CLASSES:
+                logging.warning(
+                    f"unexpected weather class for {type}: {weather_class_key}"
+                )
+                packet = json.dumps(
+                    {
+                        "type": "message",
+                        "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                        "body": [
+                            {"audio": ["nabweatherd/no-data-error.mp3"]}
+                        ],
+                        "expiration": expiration.isoformat(),
+                    },
+                    ensure_ascii=False,
+                )
+                self.writer.write(packet.encode("utf8") + b"\r\n")
+                return
+            (weather_class, info_animation) = NabWeatherd.WEATHER_CLASSES[
+                weather_class_key
+            ]
             unit_sound_file = "degree.mp3"
             if unit == NabWeatherd.UNIT_FARENHEIT:
                 max_temp = round(max_temp * 1.8 + 32.0)
                 unit_sound_file = "degree_f.mp3"
 
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":["nabweatherd/signature.mp3"]},'
-                '"body":[{"audio":["nabweatherd/' + type + '.mp3",'
-                '"nabweatherd/sky/' + weather_class + '.mp3",'
-                '"nabweatherd/temp/' + str(max_temp) + '.mp3",'
-                '"nabweatherd/' + unit_sound_file + '"]}],'
-                '"expiration":"' + expiration.isoformat() + '"}\r\n'
+            packet = json.dumps(
+                {
+                    "type": "message",
+                    "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                    "body": [
+                        {
+                            "audio": [
+                                f"nabweatherd/{type}.mp3",
+                                f"nabweatherd/sky/{weather_class}.mp3",
+                                f"nabweatherd/temp/{max_temp}.mp3",
+                                f"nabweatherd/{unit_sound_file}",
+                            ]
+                        }
+                    ],
+                    "expiration": expiration.isoformat(),
+                },
+                ensure_ascii=False,
             )
-            self.writer.write(packet.encode("utf8"))
+            self.writer.write(packet.encode("utf8") + b"\r\n")
         await self.writer.drain()
 
     async def _do_perform(self, type):

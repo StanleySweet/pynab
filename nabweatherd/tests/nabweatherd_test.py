@@ -1,6 +1,7 @@
 import datetime
 import json
 import unittest
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from asgiref.sync import async_to_sync
@@ -205,3 +206,97 @@ class TestNabWeatherdRun(NabdMockTestCase):
 
     def test_connect(self):
         self.do_test_connect(NabWeatherd)
+
+
+class TestPerformAdditional(unittest.TestCase):
+    def setUp(self):
+        self.service = NabWeatherd()
+        self.service.writer = MagicMock()
+        self.service.writer.drain = AsyncMock()
+        self.expiration = datetime.datetime.now()
+
+    def test_today_none_weather_class_does_not_crash(self):
+        info_data = {
+            "today_forecast_weather_class": None,
+            "today_forecast_max_temp": 20,
+            "tomorrow_forecast_weather_class": "Eclaircies",
+            "tomorrow_forecast_max_temp": 22,
+        }
+        config = (
+            "Paris",
+            1,
+            "weather_and_rain",
+            1,
+            None,
+            None,
+        )
+        async_to_sync(self.service.perform_additional)(
+            self.expiration, "today", info_data, config
+        )
+        self.service.writer.write.assert_called_once()
+
+    def test_tomorrow_none_weather_class_does_not_crash(self):
+        info_data = {
+            "today_forecast_weather_class": "Eclaircies",
+            "today_forecast_max_temp": 20,
+            "tomorrow_forecast_weather_class": None,
+            "tomorrow_forecast_max_temp": 22,
+        }
+        config = (
+            "Paris",
+            1,
+            "weather_and_rain",
+            1,
+            None,
+            None,
+        )
+        async_to_sync(self.service.perform_additional)(
+            self.expiration, "tomorrow", info_data, config
+        )
+        self.service.writer.write.assert_called_once()
+
+    def test_valid_weather_class_proceeds_normally(self):
+        info_data = {
+            "today_forecast_weather_class": "Eclaircies",
+            "today_forecast_max_temp": 20,
+            "tomorrow_forecast_weather_class": "Pluie",
+            "tomorrow_forecast_max_temp": 18,
+        }
+        config = (
+            "Paris",
+            1,
+            "weather_and_rain",
+            1,
+            None,
+            None,
+        )
+        async_to_sync(self.service.perform_additional)(
+            self.expiration, "today", info_data, config
+        )
+        self.service.writer.write.assert_called_once()
+        written = self.service.writer.write.call_args[0][0]
+        self.assertIn("sunny".encode(), written)
+
+
+class TestGetAnimation(unittest.TestCase):
+    def setUp(self):
+        self.service = NabWeatherd()
+        self.service.writer = MagicMock()
+
+    def test_none_weather_class_returns_none(self):
+        info_data = {
+            "weather_animation_type": "weather_only",
+            "today_forecast_weather_class": None,
+            "next_rain": False,
+        }
+        result = self.service.get_animation(info_data)
+        self.assertIsNone(result)
+
+    def test_valid_weather_class_returns_animation(self):
+        info_data = {
+            "weather_animation_type": "weather_only",
+            "today_forecast_weather_class": "Eclaircies",
+            "next_rain": False,
+        }
+        result = self.service.get_animation(info_data)
+        self.assertIsNotNone(result)

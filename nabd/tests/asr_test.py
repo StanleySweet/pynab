@@ -78,3 +78,20 @@ class TestAsrDecodeChunk(unittest.TestCase):
         self.assertTrue(
             any("test error" in msg for msg in logs.output)
         )
+
+
+class TestASR(unittest.TestCase):
+    def test_get_locale(self):
+        from nabd.asr import ASR
+
+        self.assertEqual("fr_FR", ASR.get_locale("fr_FR"))
+        self.assertEqual("en_GB", ASR.get_locale("en_GB"))
+        self.assertEqual("en_US", ASR.get_locale("en_US"))
+        self.assertEqual("fr_FR", ASR.get_locale("de_DE"))
+
+    def test_load_model_fr(self):
+        from nabd.asr import ASR
+
+        asr = ASR("fr_FR")
+        self.assertIsNotNone(asr.model)
+        self.assertIsNotNone(asr.decoder)
