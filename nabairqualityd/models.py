@@ -10,6 +10,7 @@ class Config(singleton_model.SingletonModel):
     localisation = models.JSONField(null=True)
     index_airquality = models.TextField(default="aqi", null=True)
     visual_airquality = models.TextField(default="always", null=True)
+    use_tts = models.BooleanField(default=False)
 
     # necessaire pour declencher via le site web
     next_performance_date = models.DateTimeField(null=True)

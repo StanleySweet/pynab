@@ -1,0 +1,37 @@
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.views.generic import TemplateView
+
+from .models import Config
+from .nabttsd import NabTtsd
+
+
+class SettingsView(TemplateView):
+    template_name = "nabttsd/settings.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["config"] = Config.load()
+        return context
+
+    def post(self, request, *args, **kwargs):
+        config = Config.load()
+        config.enabled = request.POST.get("enabled") == "true"
+        config.engine = request.POST.get("engine", "piper")
+        config.voice = request.POST.get("voice", "fr_FR-upmc-medium")
+        config.tts_addr = request.POST.get("tts_addr", "pi4.local:8765")
+        config.save()
+        NabTtsd.signal_daemon()
+        context = self.get_context_data(**kwargs)
+        return render(request, self.template_name, context=context)
+
+    def put(self, request, *args, **kwargs):
+        import json
+
+        data = json.loads(request.body)
+        config = Config.load()
+        text = data.get("text", "")
+        if text:
+            config.save()
+            NabTtsd.signal_daemon()
+        return JsonResponse({"status": "ok"})

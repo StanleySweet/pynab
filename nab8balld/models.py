@@ -5,6 +5,7 @@ from nabcommon import singleton_model
 
 class Config(singleton_model.SingletonModel):
     enabled = models.BooleanField(default=True)
+    use_tts = models.BooleanField(default=False)
 
     class Meta:
         app_label = "nab8balld"

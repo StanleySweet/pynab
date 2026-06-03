@@ -1,0 +1,8 @@
+---
+type: intent
+name: nabttsd/speak
+utterances:
+  - speak
+  - speak now
+  - say something
+  - talk to me

@@ -3,6 +3,7 @@ import logging
 import sys
 
 from asgiref.sync import sync_to_async
+from django.utils.translation import gettext as _, override, to_language
 
 from nabcommon.nabservice import NabInfoCachedService
 
@@ -147,11 +148,21 @@ class NabAirqualityd(NabInfoCachedService):
             self.writer.write(packet.encode("utf8"))
             await self.writer.drain()
         elif type == "today":
+            from . import models
+            config = await models.Config.load_async()
             message = NabAirqualityd.MESSAGES[info_data["data"]]
+            if config.use_tts:
+                from nabd.i18n import get_locale
+                user_locale = await get_locale()
+                with override(to_language(user_locale)):
+                    text = _("Air quality: %(quality)s") % {"quality": _(message.capitalize())}
+                audio = f"tts:{text}"
+            else:
+                audio = "nabairqualityd/" + message + ".mp3"
             packet = (
                 '{"type":"message",'
                 '"signature":{"audio":["nabairqualityd/signature.mp3"]},'
-                '"body":[{"audio":["nabairqualityd/' + message + '.mp3"]}],'
+                '"body":[{"audio":["' + audio + '"]}],'
                 '"expiration":"' + expiration.isoformat() + '"}\r\n'
             )
             self.writer.write(packet.encode("utf8"))

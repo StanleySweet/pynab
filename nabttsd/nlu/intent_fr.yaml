@@ -1,0 +1,10 @@
+---
+type: intent
+name: nabttsd/speak
+utterances:
+  - parle
+  - parle-moi
+  - dis quelque chose
+  - dis-moi quelque chose
+  - raconte
+  - raconte-moi

@@ -2,6 +2,8 @@ import datetime
 import random
 import sys
 
+from django.utils.translation import gettext as _, override, to_language
+
 from nabcommon.nabservice import NabRandomService
 from nabcommon.typing import NabdPacket
 
@@ -41,22 +43,32 @@ class NabSurprised(NabRandomService):
         await self._do_perform(expiration, None, None)
 
     async def _do_perform(self, expiration, lang, type):
-        if lang is None or lang == "default":
-            lang_prefix = ""
-        else:
-            lang_prefix = lang + "/"
-        if type is None:
-            today = datetime.date.today()
-            today_with_style = today.strftime("%m-%d")
-            today_path = f"{lang_prefix}nabsurprised/{today_with_style}/*.mp3"
-            regular_path = f"{lang_prefix}nabsurprised/*.mp3"
-            path = today_path + ";" + regular_path
-        else:
-            if type == "surprise":
-                type_subdir = ""
+        from . import models
+        config = await models.Config.load_async()
+        if config.use_tts:
+            if lang and lang != "default":
+                with override(to_language(lang)):
+                    text = _("Surprise!")
             else:
-                type_subdir = type + "/"
-            path = f"{lang_prefix}nabsurprised/{type_subdir}*.mp3"
+                text = _("Surprise!")
+            path = f"tts:{text}"
+        else:
+            if lang is None or lang == "default":
+                lang_prefix = ""
+            else:
+                lang_prefix = lang + "/"
+            if type is None:
+                today = datetime.date.today()
+                today_with_style = today.strftime("%m-%d")
+                today_path = f"{lang_prefix}nabsurprised/{today_with_style}/*.mp3"
+                regular_path = f"{lang_prefix}nabsurprised/*.mp3"
+                path = today_path + ";" + regular_path
+            else:
+                if type == "surprise":
+                    type_subdir = ""
+                else:
+                    type_subdir = type + "/"
+                path = f"{lang_prefix}nabsurprised/{type_subdir}*.mp3"
         if expiration is None:
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=1)

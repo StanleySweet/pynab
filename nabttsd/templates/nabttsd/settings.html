@@ -1,0 +1,52 @@
+{% extends "nabettings/settings.html" %}
+{% load static %}
+{% block details %}
+
+<div class="nabttsd-config">
+  <form id="config-form" action="/nabttsd/settings" method="post">
+    {% csrf_token %}
+    <table>
+      <tr>
+        <td style="width:40%">Enabled</td>
+        <td><input type="checkbox" name="enabled" value="true"
+            {% if config.enabled %}checked{% endif %} /></td>
+      </tr>
+      <tr>
+        <td>TTS engine</td>
+        <td>
+          <select name="engine">
+            <option value="piper" {% if config.engine == "piper" %}selected{% endif %}>Piper (local)</option>
+            <option value="elevenlabs" {% if config.engine == "elevenlabs" %}selected{% endif %}>ElevenLabs</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>Voice</td>
+        <td><input type="text" name="voice" value="{{ config.voice }}" /></td>
+      </tr>
+      <tr>
+        <td>TTS server (host:port)</td>
+        <td><input type="text" name="tts_addr" value="{{ config.tts_addr }}" /></td>
+      </tr>
+    </table>
+  </form>
+  <div class="nabttsd-message">
+    <label>Speak:</label>
+    <input type="text" id="tts-text" style="width:80%" />
+    <button id="tts-say">Say</button>
+  </div>
+</div>
+
+<script>
+  document.getElementById("tts-say").addEventListener("click", function () {
+    var text = document.getElementById("tts-text").value;
+    if (!text) return;
+    fetch("/nabttsd/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text }),
+    });
+  });
+</script>
+
+{% endblock %}

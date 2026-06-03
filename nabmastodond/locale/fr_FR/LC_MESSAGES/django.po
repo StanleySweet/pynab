@@ -243,3 +243,19 @@ msgstr "Déconnexion de Mastodon ?"
 msgctxt "button"
 msgid "Disconnect"
 msgstr "Déconnexion"
+
+# TTS
+msgid "Pairing request received"
+msgstr "Demande de communion reçue"
+
+msgid "Pairing request refused"
+msgstr "Demande de communion refusée"
+
+msgid "Pairing request accepted"
+msgstr "Demande de communion acceptée"
+
+msgid "Pairing cancelled"
+msgstr "Communion annulée"
+
+msgid "Setup"
+msgstr "Configuration"

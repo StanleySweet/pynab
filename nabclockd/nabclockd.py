@@ -6,6 +6,7 @@ import sys
 from typing import List
 
 from dateutil import tz
+from django.utils.translation import gettext as _, override, to_language
 
 from nabcommon import nabservice
 from nabcommon.typing import NabdPacket
@@ -72,11 +73,18 @@ class NabClockd(nabservice.NabService):
     async def chime(self, hour: int) -> None:
         now = datetime.datetime.now()
         expiration = now + datetime.timedelta(minutes=3)
-        # TODO: randomly play a message from all/
+        if self.config.use_tts:
+            from nabd.i18n import get_locale
+            user_locale = await get_locale()
+            with override(to_language(user_locale)):
+                text = _("It is %(hour)d o'clock.") % {"hour": hour}
+            audio = f"tts:{text}"
+        else:
+            audio = "nabclockd/" + str(hour) + "/*.mp3"
         packet = (
             '{"type":"message",'
             '"signature":{"audio":["nabclockd/signature.mp3"]},'
-            '"body":[{"audio":["nabclockd/' + str(hour) + '/*.mp3"]}],'
+            '"body":[{"audio":["' + audio + '"]}],'
             '"expiration":"' + expiration.isoformat() + '"}\r\n'
         )
         self.writer.write(packet.encode("utf8"))

@@ -1,6 +1,8 @@
 import asyncio
 import sys
 
+from django.utils.translation import gettext as _, override, to_language
+
 from nabcommon.nabservice import NabService
 from nabcommon.typing import NabdPacket
 
@@ -44,11 +46,20 @@ class Nab8Balld(NabService):
         self.writer.write(packet.encode("utf8"))
 
     async def perform(self, lang):
-        if lang is None or lang == "default":
-            lang_prefix = ""
+        config = await self.__config()
+        if config.use_tts:
+            if lang and lang != "default":
+                with override(to_language(lang)):
+                    text = _("Answer.")
+            else:
+                text = _("Answer.")
+            path = f"tts:{text}"
         else:
-            lang_prefix = lang + "/"
-        path = f"{lang_prefix}nab8balld/answers/*.mp3"
+            if lang is None or lang == "default":
+                lang_prefix = ""
+            else:
+                lang_prefix = lang + "/"
+            path = f"{lang_prefix}nab8balld/answers/*.mp3"
         packet = (
             f'{{"type":"message",'
             f'"body":[{{"audio":["{path}"]}}],'

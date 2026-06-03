@@ -6,6 +6,7 @@ import sys
 
 from asgiref.sync import sync_to_async
 from dateutil import tz
+from django.utils.translation import gettext as _, override, to_language
 from meteofrance_api.client import MeteoFranceClient, Place
 
 from nabcommon.nabservice import NabInfoService
@@ -603,29 +604,59 @@ class NabWeatherd(NabInfoService):
             (weather_class, info_animation) = NabWeatherd.WEATHER_CLASSES[
                 weather_class_key
             ]
-            unit_sound_file = "degree.mp3"
-            if unit == NabWeatherd.UNIT_FARENHEIT:
-                max_temp = round(max_temp * 1.8 + 32.0)
-                unit_sound_file = "degree_f.mp3"
-
-            packet = json.dumps(
-                {
-                    "type": "message",
-                    "signature": {"audio": ["nabweatherd/signature.mp3"]},
-                    "body": [
-                        {
-                            "audio": [
-                                f"nabweatherd/{type}.mp3",
-                                f"nabweatherd/sky/{weather_class}.mp3",
-                                f"nabweatherd/temp/{max_temp}.mp3",
-                                f"nabweatherd/{unit_sound_file}",
-                            ]
+            from . import models
+            cfg = await models.Config.load_async()
+            if cfg.use_tts:
+                from nabd.i18n import get_locale
+                user_locale = await get_locale()
+                with override(to_language(user_locale)):
+                    if unit == NabWeatherd.UNIT_FARENHEIT:
+                        max_temp_f = round(max_temp * 1.8 + 32.0)
+                        text = _("%(type)s: %(weather)s, %(temp)d %(unit)s") % {
+                            "type": _(type.capitalize()),
+                            "weather": _(weather_class),
+                            "temp": max_temp_f,
+                            "unit": _("degrees Fahrenheit"),
                         }
-                    ],
-                    "expiration": expiration.isoformat(),
-                },
-                ensure_ascii=False,
-            )
+                    else:
+                        text = _("%(type)s: %(weather)s, %(temp)d %(unit)s") % {
+                            "type": _(type.capitalize()),
+                            "weather": _(weather_class),
+                            "temp": max_temp,
+                            "unit": _("degrees Celsius"),
+                        }
+                packet = json.dumps(
+                    {
+                        "type": "message",
+                        "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                        "body": [{"audio": [f"tts:{text}"]}],
+                        "expiration": expiration.isoformat(),
+                    },
+                    ensure_ascii=False,
+                )
+            else:
+                unit_sound_file = "degree.mp3"
+                if unit == NabWeatherd.UNIT_FARENHEIT:
+                    max_temp = round(max_temp * 1.8 + 32.0)
+                    unit_sound_file = "degree_f.mp3"
+                packet = json.dumps(
+                    {
+                        "type": "message",
+                        "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                        "body": [
+                            {
+                                "audio": [
+                                    f"nabweatherd/{type}.mp3",
+                                    f"nabweatherd/sky/{weather_class}.mp3",
+                                    f"nabweatherd/temp/{max_temp}.mp3",
+                                    f"nabweatherd/{unit_sound_file}",
+                                ]
+                            }
+                        ],
+                        "expiration": expiration.isoformat(),
+                    },
+                    ensure_ascii=False,
+                )
             self.writer.write(packet.encode("utf8") + b"\r\n")
         await self.writer.drain()
 

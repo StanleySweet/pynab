@@ -179,3 +179,31 @@ msgstr "Annuler"
 #: templates/nabweatherd/settings.html:122
 msgid "Unknown server error"
 msgstr "Erreur inconnue du serveur"
+
+# TTS
+msgid "sunny"
+msgstr "ensoleillé"
+
+msgid "cloudy"
+msgstr "nuageux"
+
+msgid "rainy"
+msgstr "pluvieux"
+
+msgid "snowy"
+msgstr "neigeux"
+
+msgid "foggy"
+msgstr "brumeux"
+
+msgid "stormy"
+msgstr "orageux"
+
+msgid "%(type)s: %(weather)s, %(temp)d %(unit)s"
+msgstr "%(type)s : %(weather)s, %(temp)d %(unit)s"
+
+msgid "degrees Celsius"
+msgstr "degrés Celsius"
+
+msgid "degrees Fahrenheit"
+msgstr "degrés Fahrenheit"

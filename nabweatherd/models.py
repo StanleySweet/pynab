@@ -25,6 +25,7 @@ class Config(singleton_model.SingletonModel):
     )
 
     unit = models.IntegerField(null=False, default=1)
+    use_tts = models.BooleanField(default=False)
     next_performance_date = models.DateTimeField(null=True)
     next_performance_type = models.TextField(null=True)
     weather_animation_type = models.TextField(

@@ -100,3 +100,7 @@ msgstr "Enregistrer"
 #: templates/nabclockd/settings.html:204
 msgid "Reset"
 msgstr "Annuler"
+
+# TTS
+msgid "It is %(hour)d o'clock."
+msgstr "Il est %(hour)d heures."

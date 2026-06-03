@@ -4,6 +4,7 @@ from nabcommon import singleton_model
 
 
 class Config(singleton_model.SingletonModel):
+    use_tts = models.BooleanField(default=False)
     instance = models.TextField()
     client_id = models.TextField(null=True)
     client_secret = models.TextField(null=True)

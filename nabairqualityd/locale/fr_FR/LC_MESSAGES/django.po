@@ -135,3 +135,7 @@ msgstr "Annuler"
 #: templates/nabairqualityd/settings.html:81
 msgid "Unknown server error"
 msgstr "Erreur inconnue du serveur"
+
+# TTS
+msgid "Air quality: %(quality)s"
+msgstr "Qualité de l'air : %(quality)s"

@@ -240,6 +240,7 @@ class Config(singleton_model.SingletonModel):
     play_wakeup_sleep_sounds = models.BooleanField(default=True)
     settings_per_day = models.BooleanField(default=False)
     sleep_wakeup_override = models.BooleanField(default=None, null=True)
+    use_tts = models.BooleanField(default=False)
 
     class Meta:
         app_label = "nabclockd"

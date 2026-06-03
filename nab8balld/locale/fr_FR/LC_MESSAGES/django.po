@@ -92,3 +92,7 @@ msgstr "Enregistrer"
 #: templates/nab8balld/settings.html:22
 msgid "Reset"
 msgstr "Annuler"
+
+# TTS
+msgid "Answer."
+msgstr "Réponse."

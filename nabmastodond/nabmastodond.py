@@ -3,7 +3,8 @@ import re
 import sys
 from operator import attrgetter
 
-from mastodon import (  # type: ignore
+from django.utils.translation import gettext as _, override, to_language
+from mastodon import (
     Mastodon,
     MastodonError,
     MastodonUnauthorizedError,
@@ -278,7 +279,27 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
         """
         Play pairing protocol message
         """
-        if message == "ears":
+        from . import models
+        config = await models.Config.load_async()
+        if config.use_tts and message != "ears":
+            from nabd.i18n import get_locale
+            user_locale = await get_locale()
+            with override(to_language(user_locale)):
+                _TTS_TEXTS = {
+                    "proposal_received": _("Pairing request received"),
+                    "proposal_refused": _("Pairing request refused"),
+                    "proposal_accepted": _("Pairing request accepted"),
+                    "pairing_cancelled": _("Pairing cancelled"),
+                    "setup": _("Setup"),
+                }
+                text = _TTS_TEXTS.get(message, message)
+            packet = (
+                '{"type":"message",'
+                '"signature":{"audio":["nabmastodond/respirations/*.mp3"]},'
+                '"body":[{"audio":["tts:' + text + '"]}]}'
+                "\r\n"
+            )
+        elif message == "ears":
             packet = (
                 '{"type":"command",'
                 '"sequence":[{"audio":["nabmastodond/communion.wav"]}]}\r\n'

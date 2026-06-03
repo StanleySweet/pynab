@@ -122,3 +122,7 @@ msgstr "Enregistrer"
 #: templates/nabsurprised/settings.html:31
 msgid "Reset"
 msgstr "Annuler"
+
+# TTS
+msgid "Surprise!"
+msgstr "Surprise !"
