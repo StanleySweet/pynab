@@ -66,6 +66,8 @@ class SettingsView(TemplateView):
             config.settings_per_day = (
                 request.POST["settings_per_day"] == "true"
             )
+        if "use_tts" in request.POST:
+            config.use_tts = request.POST["use_tts"] == "true"
         config.save()
         NabClockd.signal_daemon()
         context = self.get_context_data(**kwargs)

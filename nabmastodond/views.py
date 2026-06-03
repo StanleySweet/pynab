@@ -39,6 +39,14 @@ class SettingsView(TemplateView):
         context["config"] = Config.load()
         return context
 
+    def post(self, request, *args, **kwargs):
+        config = Config.load()
+        config.use_tts = request.POST.get("use_tts") == "true"
+        config.save()
+        NabMastodond.signal_daemon()
+        context = self.get_context_data(**kwargs)
+        return render(request, SettingsView.template_name, context=context)
+
 
 class ConnectView(View):
     def post(self, request, *args, **kwargs):

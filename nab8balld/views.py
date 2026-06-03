@@ -18,6 +18,7 @@ class SettingsView(TemplateView):
     def post(self, request, *args, **kwargs):
         config = Config.load()
         config.enabled = request.POST["enabled"] == "true"
+        config.use_tts = request.POST.get("use_tts") == "true"
         config.save()
         Nab8Balld.signal_daemon()
         context = super().get_context_data(**kwargs)

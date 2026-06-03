@@ -79,6 +79,9 @@ class SettingsView(TemplateView):
             weather_frequency = request.POST["weather_frequency"]
             config.weather_frequency = weather_frequency
 
+        if "use_tts" in request.POST:
+            config.use_tts = request.POST["use_tts"] == "true"
+
         config.save()
         NabWeatherd.signal_daemon()
         context = self.get_context_data(**kwargs)

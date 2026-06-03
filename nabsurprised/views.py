@@ -20,6 +20,7 @@ class SettingsView(TemplateView):
     def post(self, request, *args, **kwargs):
         config = Config.load()
         config.surprise_frequency = int(request.POST["surprise_frequency"])
+        config.use_tts = request.POST.get("use_tts") == "true"
         config.save()
         NabSurprised.signal_daemon()
         context = super().get_context_data(**kwargs)

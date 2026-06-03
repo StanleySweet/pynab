@@ -306,6 +306,16 @@
   </div>
   <div class="card-footer">
     <div class="row mb-2">
+      <form action="/nabmastodond/settings" method="post" id="nabmastodond-tts-form">
+        {% csrf_token %}
+        <div class="form-group row">
+          <label class="col-6 col-form-label">{% trans "Use TTS" %}</label>
+          <div class="col-6">
+            <button type="button" class="btn btn-toggle{% if config.use_tts %} active{% endif %}" data-name="use_tts" data-toggle="button" aria-pressed="false" autocomplete="off"><div class="handle"></div></button>
+            <input name="use_tts" type="hidden" value="{% if config.use_tts %}true{% else %}false{% endif %}" />
+          </div>
+        </div>
+      </form>
       {% if config.access_token %}
         {% csrf_token %}
         <div class="modal fade disconnect-confirmation-modal" tabindex="-1" role="dialog" aria-labelledby="nabmastodond-disconnect-title" aria-hidden="true">
@@ -355,11 +365,27 @@
                 $.bootstrapGrowl(message, {type: 'danger', allow_dismiss: true});
               }
             })
-            return false;
+             return false;
+           });
+         });
+         </script>
+      {% endif %}
+      <script type="text/javascript">
+      $(function() {
+        var form = $('#nabmastodond-tts-form');
+        form.find('button.btn-toggle').on('click', function() {
+          form.find("input[name='use_tts']").val($(this).hasClass('active'));
+          $.ajax({
+            url: form.attr('action'),
+            method: "POST",
+            data: form.serialize(),
+            success: function(data) {
+              $("#nabmastodond-settings").replaceWith(data);
+            }
           });
         });
-        </script>
-      {% endif %}
+      });
+      </script>
     </div>
   </div>
 </div>

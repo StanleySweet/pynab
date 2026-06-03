@@ -26,6 +26,8 @@ class SettingsView(TemplateView):
         if "visual_airquality" in request.POST:
             visual_airquality = request.POST["visual_airquality"]
             config.visual_airquality = visual_airquality
+        if "use_tts" in request.POST:
+            config.use_tts = request.POST["use_tts"] == "true"
         config.save()
         NabAirqualityd.signal_daemon()
         context = self.get_context_data(**kwargs)
