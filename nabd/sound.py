@@ -2,6 +2,7 @@ import abc
 import asyncio
 import ctypes
 import json
+import logging
 import wave
 
 import websockets
@@ -73,13 +74,13 @@ class Sound(object, metaclass=abc.ABCMeta):
                             if ctrl.get("type") == "done":
                                 break
                             if ctrl.get("type") == "error":
-                                print(
-                                    "TTS error: "
-                                    f"{ctrl.get('message')}"
+                                logging.error(
+                                    "TTS error: %s",
+                                    ctrl.get("message"),
                                 )
                                 return None
             except Exception as e:
-                print(f"TTS WebSocket error: {e}")
+                logging.error("TTS WebSocket error: %s", e)
                 return None
             if not frames:
                 return None
@@ -105,7 +106,7 @@ class Sound(object, metaclass=abc.ABCMeta):
             OPUS_SAMPLE_RATE, 1, ctypes.byref(err)
         )
         if err.value != 0:
-            print(f"Opus decoder create failed: {err.value}")
+            logging.error("Opus decoder create failed: %s", err.value)
             return None
         tts_path = "/tmp/nabttsd_tts.wav"
         try:
@@ -124,7 +125,7 @@ class Sound(object, metaclass=abc.ABCMeta):
                     if ret > 0:
                         wf.writeframes(bytes(buf[:ret]))
         except Exception as e:
-            print(f"Opus decode error: {e}")
+            logging.error("Opus decode error: %s", e)
             return None
         finally:
             libopus.opus_decoder_destroy(decoder)
