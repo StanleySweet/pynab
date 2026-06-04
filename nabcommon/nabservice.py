@@ -245,6 +245,8 @@ class NabRecurrentService(NabService, ABC):
         CONFIG_RELOADED = 2
         # Perform was called
         PERFORMANCE_PLAYED = 3
+        # Other (error recovery)
+        OTHER = 4
 
     def __init__(self):
         super().__init__()
@@ -327,17 +329,38 @@ class NabRecurrentService(NabService, ABC):
             async with self.loop_cv:
                 while self.running:
                     # Load or reload configuration
-                    next_date, next_args, config = await self._load_config()
+                    try:
+                        next_date, next_args, config = await self._load_config()
+                    except Exception as e:
+                        logging.error(f"service_loop: _load_config error: {e}")
+                        self.reason = NabRecurrentService.Reason.OTHER
+                        try:
+                            await asyncio.wait_for(
+                                self.loop_cv.wait(), 60
+                            )
+                        except asyncio.TimeoutError:
+                            pass
+                        continue
                     # Determine if it's time to perform
                     now = datetime.datetime.now(datetime.timezone.utc)
                     if next_date is not None and next_date <= now:
-                        await self.perform(
-                            next_date + datetime.timedelta(minutes=1),
-                            next_args,
-                            config,
-                        )
+                        try:
+                            await self.perform(
+                                next_date + datetime.timedelta(minutes=1),
+                                next_args,
+                                config,
+                            )
+                        except Exception as e:
+                            logging.error(
+                                f"service_loop: perform error: {e}"
+                            )
                         # reset date after performance
-                        await self.update_next(None, None)
+                        try:
+                            await self.update_next(None, None)
+                        except Exception as e:
+                            logging.error(
+                                f"service_loop: update_next error: {e}"
+                            )
                         self.reason = (
                             NabRecurrentService.Reason.PERFORMANCE_PLAYED
                         )
