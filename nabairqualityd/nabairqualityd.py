@@ -137,8 +137,9 @@ class NabAirqualityd(NabInfoCachedService):
         return info_animation
 
     async def perform_additional(self, expiration, type, info_data, config_t):
+        logging.info(f"perform_additional: type={type}, info_data={'None' if info_data is None else 'loaded'}")
         if info_data is None:
-            logging.debug("No data available")
+            logging.info("perform_additional: no data available")
             packet = (
                 '{"type":"message",'
                 '"signature":{"audio":["nabairqualityd/signature.mp3"]},'
@@ -150,6 +151,7 @@ class NabAirqualityd(NabInfoCachedService):
         elif type == "today":
             from . import models
             config = await models.Config.load_async()
+            logging.info(f"perform_additional: use_tts={config.use_tts}")
             message = NabAirqualityd.MESSAGES[info_data["data"]]
             if config.use_tts:
                 from nabd.i18n import get_locale

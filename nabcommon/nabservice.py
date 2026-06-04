@@ -467,8 +467,7 @@ class NabInfoService(NabRecurrentService, ABC):
         """
 
     async def perform(self, expiration_date, type, config):
-        # Always fetch info data.
-        logging.debug(f"fetch_info_data type = {type}")
+        logging.info(f"perform called with args={type}")
         info_data = await self._do_fetch_info_data(config)
         info_animation = self.get_animation(info_data)
         service_name = self.__class__.__name__.lower()
