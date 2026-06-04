@@ -137,7 +137,7 @@ class Sound(object, metaclass=abc.ABCMeta):
                         decoder, cdata, len(frame_data), buf, OPUS_FRAME_SIZE, 0
                     )
                     if ret > 0:
-                        wf.writeframes(bytes(buf[:ret]))
+                        wf.writeframes(ctypes.string_at(buf, ret * 2))
                         total_samples += ret
         except Exception as e:
             logging.error("Opus decode error: %s", e)

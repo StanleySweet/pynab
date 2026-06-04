@@ -204,7 +204,7 @@ class NabTtsd(NabService):
                     0,
                 )
                 if ret > 0:
-                    pcm.write(bytes(buf[:ret]))
+                    pcm.write(ctypes.string_at(buf, ret * 2))
                 elif ret < 0:
                     err_msg = opus.opus_strerror(ret)
                     logging.error(
