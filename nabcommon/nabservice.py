@@ -47,6 +47,10 @@ class NabService(ABC):
     async def process_nabd_packet(self, packet: NabdPacket) -> None:
         pass
 
+    async def send_wakeup(self):
+        """Send a wakeup packet to nabd to wake the rabbit from sleep."""
+        self.writer.write(b'{"type":"wakeup"}\r\n')
+
     async def client_loop(self):
         try:
             package_name = inspect.getmodule(self.__class__).__package__
@@ -480,6 +484,7 @@ class NabInfoService(NabRecurrentService, ABC):
             info_packet = (
                 '{"type":"info","info_id":"' + service_name + '"}\r\n'
             )
+        await self.send_wakeup()
         self.writer.write(info_packet.encode("utf8"))
         if type != "info":
             await self.perform_additional(
