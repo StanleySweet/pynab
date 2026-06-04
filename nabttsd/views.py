@@ -29,9 +29,13 @@ class SettingsView(TemplateView):
         import json
 
         data = json.loads(request.body)
-        config = Config.load()
         text = data.get("text", "")
         if text:
-            config.save()
+            with open("/tmp/nabttsd_pending.json", "w") as f:
+                json.dump({
+                    "text": text,
+                    "engine": data.get("engine", "piper"),
+                    "voice": data.get("voice", "fr_FR-upmc-medium"),
+                }, f)
             NabTtsd.signal_daemon()
         return JsonResponse({"status": "ok"})

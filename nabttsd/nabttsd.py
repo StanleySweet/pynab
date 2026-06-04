@@ -73,6 +73,7 @@ class NabTtsd(NabService):
             os.unlink(OPUS_PENDING_FILE)
             text = data.get("text", "")
             if text:
+                logging.info("nabttsd: pending text: %s", text[:80])
                 asyncio.ensure_future(
                     self.speak(
                         text,
@@ -116,6 +117,7 @@ class NabTtsd(NabService):
 
     async def _speak(self, text, engine, voice, addr):
         uri = f"ws://{addr}/ws"
+        logging.info("nabttsd: connecting to %s", uri)
         try:
             async with websockets.connect(uri) as ws:
                 req = json.dumps(
@@ -131,6 +133,7 @@ class NabTtsd(NabService):
                 if meta.get("type") != "start":
                     logging.error(f"nabttsd: unexpected response: {meta}")
                     return
+                logging.info("nabttsd: got start")
                 frames = []
                 while True:
                     msg = await ws.recv()
@@ -146,6 +149,7 @@ class NabTtsd(NabService):
                             )
                             return
             if frames:
+                logging.info("nabttsd: got %d frames, decoding+playing", len(frames))
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(
                     None, self._decode_and_play, frames
