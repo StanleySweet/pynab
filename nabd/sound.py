@@ -46,10 +46,13 @@ class Sound(object, metaclass=abc.ABCMeta):
     async def preload(self, audio_resource):
         if audio_resource.startswith("tts:"):
             text = audio_resource[4:]
+            logging.info("TTS preload: text='%s'", text[:80])
             if not text:
+                logging.warning("TTS preload: empty text")
                 return None
             addr = await self._tts_addr()
             uri = f"ws://{addr}/ws"
+            logging.info("TTS preload: connecting to %s", uri)
             try:
                 async with websockets.connect(uri) as ws:
                     req = json.dumps(
@@ -63,7 +66,11 @@ class Sound(object, metaclass=abc.ABCMeta):
                     msg = await ws.recv()
                     meta = json.loads(msg)
                     if meta.get("type") != "start":
+                        logging.warning(
+                            "TTS preload: unexpected response %s", meta
+                        )
                         return None
+                    logging.info("TTS preload: got start, sample_rate=%s", meta.get("sample_rate"))
                     frames = []
                     while True:
                         msg = await ws.recv()
@@ -83,12 +90,18 @@ class Sound(object, metaclass=abc.ABCMeta):
                 logging.error("TTS WebSocket error: %s", e)
                 return None
             if not frames:
+                logging.warning("TTS preload: no frames received")
                 return None
+            logging.info(
+                "TTS preload: got %d frames, decoding to WAV", len(frames)
+            )
             loop = asyncio.get_event_loop()
             tts_path = await loop.run_in_executor(
                 None, self._decode_opus_to_wav, frames
             )
+            logging.info("TTS preload: WAV ready at %s", tts_path)
             return tts_path
+        logging.debug("preload: %s", audio_resource)
         if audio_resource.startswith("https://") or audio_resource.startswith(
             "http://"
         ):
@@ -96,7 +109,7 @@ class Sound(object, metaclass=abc.ABCMeta):
         file = await Resources.find("sounds", audio_resource)
         if file is not None:
             return file.as_posix()
-        print(f"Warning : could not find resource {audio_resource}")
+        logging.warning("could not find resource %s", audio_resource)
         return None
 
     def _decode_opus_to_wav(self, frames):
@@ -109,13 +122,14 @@ class Sound(object, metaclass=abc.ABCMeta):
             logging.error("Opus decoder create failed: %s", err.value)
             return None
         tts_path = "/tmp/nabttsd_tts.wav"
+        total_samples = 0
         try:
             with wave.open(tts_path, "wb") as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(2)
                 wf.setframerate(OPUS_SAMPLE_RATE)
                 buf = (ctypes.c_int16 * OPUS_FRAME_SIZE)()
-                for frame_data in frames:
+                for i, frame_data in enumerate(frames):
                     cdata = (
                         ctypes.c_uint8 * len(frame_data)
                     ).from_buffer_copy(frame_data)
@@ -124,11 +138,14 @@ class Sound(object, metaclass=abc.ABCMeta):
                     )
                     if ret > 0:
                         wf.writeframes(bytes(buf[:ret]))
+                        total_samples += ret
         except Exception as e:
             logging.error("Opus decode error: %s", e)
             return None
         finally:
             libopus.opus_decoder_destroy(decoder)
+        duration = total_samples / OPUS_SAMPLE_RATE
+        logging.info("TTS decode: %d frames, %d samples, %.1f sec", len(frames), total_samples, duration)
         return tts_path
 
     async def play_list(self, filenames, preloaded, event=None):

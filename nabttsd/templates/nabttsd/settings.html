@@ -44,6 +44,19 @@
       </div>
     </div>
   </form>
+  <div class="card-footer">
+    <div class="form-group row">
+      <label class="col-6 col-form-label">{% trans "Test TTS" %}</label>
+      <div class="col-6">
+        <div class="input-group">
+          <input type="text" id="tts-text" class="form-control" placeholder="{% trans "Type text to speak..." %}" />
+          <div class="input-group-append">
+            <button id="tts-say" class="btn btn-primary">{% trans "Say" %}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <script type="text/javascript">
   $(function() {
     var form = $('#nabttsd-settings form');
@@ -78,6 +91,17 @@
     resetBtn.on("click", function() {
       $.get(url, function(data) {
         $("#nabttsd-settings").replaceWith(data);
+      });
+    });
+    $("#tts-say").on("click", function() {
+      var text = $("#tts-text").val();
+      if (!text) return;
+      $.ajax({
+        url: url,
+        method: "PUT",
+        contentType: "application/json",
+        data: JSON.stringify({ text: text }),
+        success: function() { $("#tts-text").val(""); }
       });
     });
   });
