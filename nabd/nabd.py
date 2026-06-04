@@ -535,6 +535,10 @@ class Nabd:
                 async with self.idle_cv:
                     self.idle_queue.append((packet, writer))
                     self.idle_cv.notify()
+                logging.info(
+                    f"nabd: command queued while rabbit is asleep: "
+                    f"slot={slot} request_id={packet.get('request_id', 'none')}"
+                )
 
     def __check_perform_packet(
         self, packet: AnyPacket, slot: str, writer: asyncio.StreamWriter

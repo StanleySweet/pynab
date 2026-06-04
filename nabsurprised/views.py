@@ -29,7 +29,9 @@ class SettingsView(TemplateView):
 
     def put(self, request, *args, **kwargs):
         config = Config.load()
-        config.next_surprise = datetime.datetime.now(datetime.timezone.utc)
+        config.next_surprise = datetime.datetime.now(
+            datetime.timezone.utc
+        ) - datetime.timedelta(seconds=1)
         config.save()
         NabSurprised.signal_daemon()
         return JsonResponse({"status": "ok"})
