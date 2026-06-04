@@ -39,7 +39,7 @@ class SettingsView(TemplateView):
         config = Config.load()
         config.next_performance_date = datetime.datetime.now(
             datetime.timezone.utc
-        )
+        ) - datetime.timedelta(seconds=1)
         config.next_performance_type = "today"
         config.save()
         NabAirqualityd.signal_daemon()
