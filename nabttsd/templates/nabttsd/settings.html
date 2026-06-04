@@ -101,6 +101,9 @@
         method: "PUT",
         contentType: "application/json",
         data: JSON.stringify({ text: text }),
+        beforeSend: function(xhr) {
+          xhr.setRequestHeader("X-CSRFToken", form.find('input[name="csrfmiddlewaretoken"]').val());
+        },
         success: function() { $("#tts-text").val(""); }
       });
     });

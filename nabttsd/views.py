@@ -1,3 +1,5 @@
+import json
+
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.generic import TemplateView
@@ -26,8 +28,6 @@ class SettingsView(TemplateView):
         return render(request, self.template_name, context=context)
 
     def put(self, request, *args, **kwargs):
-        import json
-
         data = json.loads(request.body)
         text = data.get("text", "")
         if text:
