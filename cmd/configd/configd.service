@@ -1,0 +1,17 @@
+[Unit]
+Description=pynab config daemon — lightweight SQLite config IPC
+After=network.target
+Before=nabd.service nabweatherd.service nabairqualityd.service nabclockd.service nabsurprised.service nabmastodond.service nab8balld.service nabttsd.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+ExecStart=/usr/local/bin/configd
+Environment=PYNAB_DB_PATH=/opt/pynab/data/pynab.db
+Environment=PYNAB_CONFIG_SOCK=/tmp/pynab-config.sock
+
+[Install]
+WantedBy=multi-user.target

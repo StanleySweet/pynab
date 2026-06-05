@@ -1,14 +1,15 @@
+import asyncio
 import datetime
 import json
 import logging
 import random
 import sys
 
-from asgiref.sync import sync_to_async
 from dateutil import tz
 from django.utils.translation import gettext as _, override, to_language
 from meteofrance_api.client import MeteoFranceClient, Place
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabInfoService
 from nabcommon.typing import NabdPacket
 
@@ -252,6 +253,10 @@ class NabWeatherd(NabInfoService):
     weather_bedtime_done = False
     weather_wakeup_done = False
 
+    def __init__(self):
+        super().__init__(configd=True)
+        self.client = ConfigClient()
+
     async def perform(self, expiration, args, config):
 
         weather_forecast = "today"
@@ -282,31 +287,28 @@ class NabWeatherd(NabInfoService):
                 weather_forecast = "today"
 
             await self._do_perform_additional(config, weather_forecast)
-            from . import models
 
-            config_t = await models.Config.load_async()
-            config_t.next_performance_weather_vocal_flag = False
-            await config_t.save_async()
+            await self.client.set_async("nabweatherd", {
+                "next_performance_weather_vocal_flag": False
+            })
 
         if weather_frequency == 3:
-            from nabclockd import models as clock_models
-
-            clock_config = await clock_models.Config.load_async()
+            clock_config = await self.client.get_async("nabclockd")
 
             bedtime = datetime.datetime(
                 now.year,
                 now.month,
                 now.day,
-                clock_config.sleep_hour,
-                clock_config.sleep_min,
+                clock_config["sleep_hour"],
+                clock_config["sleep_min"],
                 tzinfo=tz.gettz(current_tz),
             )
             wakeup = datetime.datetime(
                 now.year,
                 now.month,
                 now.day,
-                clock_config.wakeup_hour,
-                clock_config.wakeup_min,
+                clock_config["wakeup_hour"],
+                clock_config["wakeup_min"],
                 tzinfo=tz.gettz(current_tz),
             )
 
@@ -318,11 +320,10 @@ class NabWeatherd(NabInfoService):
                 if not self.weather_wakeup_done:
                     await self._do_perform_additional(config, weather_forecast)
                     self.weather_wakeup_done = True
-                    from . import models
 
-                    config_t = await models.Config.load_async()
-                    config_t.next_performance_weather_vocal_flag = False
-                    await config_t.save_async()
+                    await self.client.set_async("nabweatherd", {
+                        "next_performance_weather_vocal_flag": False
+                    })
             else:
                 self.weather_wakeup_done = False
 
@@ -331,70 +332,65 @@ class NabWeatherd(NabInfoService):
                 if not self.weather_bedtime_done:
                     await self._do_perform_additional(config, weather_forecast)
                     self.weather_bedtime_done = True
-                    from . import models
 
-                    config_t = await models.Config.load_async()
-                    config_t.next_performance_weather_vocal_flag = False
-                    await config_t.save_async()
+                    await self.client.set_async("nabweatherd", {
+                        "next_performance_weather_vocal_flag": False
+                    })
             else:
                 self.weather_bedtime_done = False
 
     async def get_config(self):
-        from . import models
-
-        config = await models.Config.load_async()
+        cfg = await self.client.get_dict_async("nabweatherd")
         return (
-            config.next_performance_date,
-            config.next_performance_type,
+            cfg.next_performance_date,
+            cfg.next_performance_type,
             (
-                config.location,
-                config.unit,
-                config.weather_animation_type,
-                config.weather_frequency,
-                config.next_performance_weather_vocal_date,
-                config.next_performance_weather_vocal_flag,
+                cfg.location,
+                cfg.unit,
+                cfg.weather_animation_type,
+                cfg.weather_frequency,
+                cfg.next_performance_weather_vocal_date,
+                cfg.next_performance_weather_vocal_flag,
             ),
         )
 
     async def update_next(self, next_date, next_args):
-        from . import models
-
-        config = await models.Config.load_async()
-        config.next_performance_date = next_date
-        config.next_performance_type = next_args
+        cfg = await self.client.get_dict_async("nabweatherd")
 
         current_tz = self.get_system_tz()
         now = datetime.datetime.now(tz=tz.gettz(current_tz))
 
-        if not config.next_performance_weather_vocal_flag:
-            # every hour approx
-            if config.weather_frequency == 1:
+        weather_frequency = cfg.weather_frequency
+        vocal_flag = cfg.next_performance_weather_vocal_flag
+        vocal_date = cfg.next_performance_weather_vocal_date
+
+        if not vocal_flag:
+            if weather_frequency == 1:
                 minutes = random.randint(40, 70)  # nosec B311
-                config.next_performance_weather_vocal_date = (
-                    now + datetime.timedelta(minutes=minutes)
-                )
+                vocal_date = now + datetime.timedelta(minutes=minutes)
+                vocal_flag = True
                 logging.debug(
                     "update_next / next_performance_weather_vocal"
-                    f"={config.next_performance_weather_vocal_date}"
+                    f"={vocal_date}"
                 )
-                config.next_performance_weather_vocal_flag = True
-
-            elif config.weather_frequency == 2:
+            elif weather_frequency == 2:
                 minutes = random.randint(100, 190)  # nosec B311
-                config.next_performance_weather_vocal_date = (
-                    now + datetime.timedelta(minutes=minutes)
-                )
+                vocal_date = now + datetime.timedelta(minutes=minutes)
+                vocal_flag = True
                 logging.debug(
                     "update_next / next_performance_weather_vocal"
-                    f"={config.next_performance_weather_vocal_date}"
+                    f"={vocal_date}"
                 )
-                config.next_performance_weather_vocal_flag = True
+            elif weather_frequency == 3:
+                vocal_date = None
+                vocal_flag = False
 
-            elif config.weather_frequency == 3:
-                config.next_performance_weather_vocal_date = None
-                config.next_performance_weather_vocal_flag = False
-
-        await config.save_async()
+        await self.client.set_async("nabweatherd", {
+            "next_performance_date": next_date,
+            "next_performance_type": next_args,
+            "next_performance_weather_vocal_flag": vocal_flag,
+            "next_performance_weather_vocal_date": vocal_date,
+        })
 
     def get_system_tz(self):
         with open("/etc/timezone") as w:
@@ -408,8 +404,6 @@ class NabWeatherd(NabInfoService):
         return next_5mn
 
     async def fetch_info_data(self, config_t):
-        from . import models  # noqa
-
         (
             location,
             unit,
@@ -424,7 +418,8 @@ class NabWeatherd(NabInfoService):
 
         place = Place(location)
 
-        client = await sync_to_async(MeteoFranceClient)()
+        loop = asyncio.get_event_loop()
+        client = await loop.run_in_executor(None, MeteoFranceClient)
         try:
             my_place_weather_forecast = client.get_forecast_for_place(place)
             data = my_place_weather_forecast.daily_forecast
@@ -604,11 +599,10 @@ class NabWeatherd(NabInfoService):
             (weather_class, info_animation) = NabWeatherd.WEATHER_CLASSES[
                 weather_class_key
             ]
-            from . import models
-            cfg = await models.Config.load_async()
-            if cfg.use_tts:
-                from nabd.i18n import get_locale
-                user_locale = await get_locale()
+            cfg = await self.client.get_async("nabweatherd")
+            if cfg.get("use_tts"):
+                locale_cfg = await self.client.get_async("nabd")
+                user_locale = locale_cfg.get("locale", "fr_FR")
                 with override(to_language(user_locale)):
                     if unit == NabWeatherd.UNIT_FARENHEIT:
                         max_temp_f = round(max_temp * 1.8 + 32.0)

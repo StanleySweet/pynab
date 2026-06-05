@@ -8,6 +8,7 @@ import sys
 import alsaaudio
 import websockets
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabService
 from nabcommon.typing import NabdPacket
 
@@ -57,14 +58,12 @@ class NabTtsd(NabService):
     DAEMON_PIDFILE = "/run/nabttsd.pid"
 
     def __init__(self):
-        super().__init__()
+        super().__init__(configd=True)
+        self.client = ConfigClient()
         self._speaking = False
 
     async def __config(self):
-        from . import models
-
-        config = await models.Config.load_async()
-        return config
+        return await self.client.get_async("nabttsd")
 
     async def reload_config(self):
         try:
@@ -99,20 +98,20 @@ class NabTtsd(NabService):
         intent = packet.get("nlu", {}).get("intent", "")
         if intent == "nabttsd/speak":
             config = await self.__config()
-            if config.enabled:
+            if config.get("enabled"):
                 text = packet.get("nlu", {}).get("text", "")
                 if text:
                     asyncio.ensure_future(
-                        self.speak(text, config.engine, config.voice)
+                        self.speak(text, config.get("engine"), config.get("voice"))
                     )
 
     async def process_rfid_event_packet(self, packet):
         if packet.get("app") == "nabttsd" and packet.get("event") == "detected":
             config = await self.__config()
-            if config.enabled and "data" in packet:
+            if config.get("enabled") and "data" in packet:
                 text = packet["data"]
                 asyncio.ensure_future(
-                    self.speak(text, config.engine, config.voice)
+                    self.speak(text, config.get("engine"), config.get("voice"))
                 )
 
     async def _speak(self, text, engine, voice, addr):
@@ -164,7 +163,7 @@ class NabTtsd(NabService):
         self._speaking = True
         try:
             config = await self.__config()
-            addr = config.tts_addr
+            addr = config.get("tts_addr")
             await self._speak(text, engine, voice, addr)
         except Exception as e:
             logging.error(f"nabttsd: speak error: {e}")

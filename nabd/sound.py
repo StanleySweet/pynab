@@ -39,9 +39,10 @@ class Sound(object, metaclass=abc.ABCMeta):
     """Interface for sound"""
 
     async def _tts_addr(self):
-        from nabttsd.models import Config as TtsConfig
-        cfg = await TtsConfig.load_async()
-        return cfg.tts_addr
+        from nabcommon.config_client import ConfigClient
+        client = ConfigClient()
+        cfg = await client.get_async("nabttsd")
+        return cfg.get("tts_addr", "pi4.local:8765")
 
     async def preload(self, audio_resource):
         if audio_resource.startswith("tts:"):

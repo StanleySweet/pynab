@@ -18,10 +18,11 @@ class NabClockd(nabservice.NabService):
     DAEMON_PIDFILE = "/run/nabclockd.pid"
 
     def __init__(self):
-        super().__init__()
-        from . import models
+        super().__init__(configd=True)
+        from nabcommon.config_client import ConfigClient
 
-        self.config = models.Config.load()
+        self.client = ConfigClient()
+        self.config = self.client.get("nabclockd")
         self.loop_cv = asyncio.Condition()
         self.asleep = None
         self.last_chime = None
@@ -32,10 +33,8 @@ class NabClockd(nabservice.NabService):
         self.ignore_next_idle_packet = False
 
     async def reload_config(self):
-        from . import models
-
         async with self.loop_cv:
-            self.config = await models.Config.load_async()
+            self.config = await self.client.get_async("nabclockd")
             self.loop_cv.notify()
 
     def synchronized_since_boot(self):
@@ -73,9 +72,9 @@ class NabClockd(nabservice.NabService):
     async def chime(self, hour: int) -> None:
         now = datetime.datetime.now()
         expiration = now + datetime.timedelta(minutes=3)
-        if self.config.use_tts:
-            from nabd.i18n import get_locale
-            user_locale = await get_locale()
+        if self.config["use_tts"]:
+            locale_cfg = await self.client.get_async("nabd")
+            user_locale = locale_cfg.get("locale", "fr_FR")
             with override(to_language(user_locale)):
                 text = _("It is %(hour)d o'clock.") % {"hour": hour}
             audio = f"tts:{text}"
@@ -94,23 +93,21 @@ class NabClockd(nabservice.NabService):
         response = []
         if self.synchronized_since_boot():
             should_sleep = None
-            if self.config.settings_per_day:
+            if self.config["settings_per_day"]:
                 # Until 3am, we keep the same day name
                 # to obtain the settings from the current (previous) day,
                 # so the user can put until 3am for the sleep time.
                 curDateValue = now + datetime.timedelta(hours=-3)
                 dayOfTheWeek = curDateValue.strftime("%A").lower()
-                wakeup_hour = getattr(
-                    self.config, "wakeup_hour_" + dayOfTheWeek
-                )
-                sleep_hour = getattr(self.config, "sleep_hour_" + dayOfTheWeek)
-                wakeup_min = getattr(self.config, "wakeup_min_" + dayOfTheWeek)
-                sleep_min = getattr(self.config, "sleep_min_" + dayOfTheWeek)
+                wakeup_hour = self.config["wakeup_hour_" + dayOfTheWeek]
+                sleep_hour = self.config["sleep_hour_" + dayOfTheWeek]
+                wakeup_min = self.config["wakeup_min_" + dayOfTheWeek]
+                sleep_min = self.config["sleep_min_" + dayOfTheWeek]
             else:
-                wakeup_hour = self.config.wakeup_hour
-                sleep_hour = self.config.sleep_hour
-                wakeup_min = self.config.wakeup_min
-                sleep_min = self.config.sleep_min
+                wakeup_hour = self.config["wakeup_hour"]
+                sleep_hour = self.config["sleep_hour"]
+                wakeup_min = self.config["wakeup_min"]
+                sleep_min = self.config["sleep_min"]
 
             if (
                 wakeup_hour is not None
@@ -137,11 +134,11 @@ class NabClockd(nabservice.NabService):
                         sleep_hour,
                         sleep_min,
                     )
-            if self.config.sleep_wakeup_override is not None:
-                if should_sleep == self.config.sleep_wakeup_override:
+            if self.config["sleep_wakeup_override"] is not None:
+                if should_sleep == self.config["sleep_wakeup_override"]:
                     response.append("clear_override")
                 else:
-                    should_sleep = self.config.sleep_wakeup_override
+                    should_sleep = self.config["sleep_wakeup_override"]
             if (
                 should_sleep is not None
                 and self.asleep is not None
@@ -154,7 +151,7 @@ class NabClockd(nabservice.NabService):
             if (
                 (should_sleep is None or should_sleep is False)
                 and now.minute == 0
-                and self.config.chime_hour
+                and self.config["chime_hour"]
             ):
                 if self.last_chime != now.hour:
                     response.append("chime")
@@ -182,12 +179,14 @@ class NabClockd(nabservice.NabService):
                         response = self.clock_response(now)
                         for r in response:
                             if r == "clear_override":
-                                self.config.sleep_wakeup_override = None
-                                await self.config.save_async()
+                                await self.client.set_async(
+                                    "nabclockd",
+                                    {"sleep_wakeup_override": None},
+                                )
                             elif r == "sleep":
                                 # Check if we need to play the sleep sound
                                 if (
-                                    self.config.play_wakeup_sleep_sounds
+                                    self.config["play_wakeup_sleep_sounds"]
                                     and self.last_time_idle_state
                                 ):
                                     idle_elapsed_seconds = (
@@ -221,7 +220,7 @@ class NabClockd(nabservice.NabService):
 
                             elif r == "wakeup":
                                 # Check if we need to play the wakeup sound
-                                if self.config.play_wakeup_sleep_sounds:
+                                if self.config["play_wakeup_sleep_sounds"]:
                                     # We dont want the next idle packet
                                     # that is sent after the sound to
                                     # trigger a loop-cv-notify, so skip it
@@ -271,7 +270,7 @@ class NabClockd(nabservice.NabService):
                 # If wakeup/sleep sounds are enabled and we receive
                 # an idle packet ..
                 if (
-                    self.config.play_wakeup_sleep_sounds
+                    self.config["play_wakeup_sleep_sounds"]
                     and packet["state"] == "idle"
                 ):
                     if self.ignore_next_idle_packet:
@@ -294,8 +293,10 @@ class NabClockd(nabservice.NabService):
             else:
                 type = "sleep"
             async with self.loop_cv:
-                self.config.sleep_wakeup_override = type == "sleep"
-                await self.config.save_async()
+                await self.client.set_async(
+                    "nabclockd",
+                    {"sleep_wakeup_override": type == "sleep"},
+                )
                 self.loop_cv.notify()
         elif (
             packet["type"] == "asr_event"
@@ -304,8 +305,10 @@ class NabClockd(nabservice.NabService):
         ):
             if packet["nlu"]["intent"] == "nabclockd/sleep":
                 async with self.loop_cv:
-                    self.config.sleep_wakeup_override = True
-                    await self.config.save_async()
+                    await self.client.set_async(
+                        "nabclockd",
+                        {"sleep_wakeup_override": True},
+                    )
                     self.loop_cv.notify()
             elif packet["nlu"]["intent"] == "nabclockd/clock":
                 now = datetime.datetime.now()
@@ -316,8 +319,10 @@ class NabClockd(nabservice.NabService):
                 await self.chime(hour)
         elif packet["type"] == "button_event" and packet["event"] == "click":
             async with self.loop_cv:
-                self.config.sleep_wakeup_override = False
-                await self.config.save_async()
+                await self.client.set_async(
+                    "nabclockd",
+                    {"sleep_wakeup_override": False},
+                )
                 self.loop_cv.notify()
 
     def start_service_loop(

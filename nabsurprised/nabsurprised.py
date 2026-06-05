@@ -4,6 +4,7 @@ import sys
 
 from django.utils.translation import gettext as _, override, to_language
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabRandomService
 from nabcommon.typing import NabdPacket
 
@@ -26,26 +27,23 @@ class NabSurprised(NabRandomService):
         "nabsurprised/birthday",
     ]
 
-    async def get_config(self):
-        from . import models
+    def __init__(self):
+        super().__init__(configd=True)
+        self.client = ConfigClient()
 
-        config = await models.Config.load_async()
-        return (config.next_surprise, None, config.surprise_frequency)
+    async def get_config(self):
+        cfg = await self.client.get_dict_async("nabsurprised")
+        return (cfg.next_surprise, None, cfg.surprise_frequency)
 
     async def update_next(self, next_date, next_args):
-        from . import models
-
-        config = await models.Config.load_async()
-        config.next_surprise = next_date
-        await config.save_async()
+        await self.client.set_async("nabsurprised", {"next_surprise": next_date})
 
     async def perform(self, expiration, args, config):
         await self._do_perform(expiration, None, None)
 
     async def _do_perform(self, expiration, lang, type):
-        from . import models
-        config = await models.Config.load_async()
-        if config.use_tts:
+        cfg = await self.client.get_async("nabsurprised")
+        if cfg.get("use_tts"):
             if lang and lang != "default":
                 with override(to_language(lang)):
                     text = _("Surprise!")

@@ -3,6 +3,7 @@ import sys
 
 from django.utils.translation import gettext as _, override, to_language
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabService
 from nabcommon.typing import NabdPacket
 
@@ -13,24 +14,20 @@ class Nab8Balld(NabService):
     DAEMON_PIDFILE = "/run/nab8balld.pid"
 
     def __init__(self):
-        super().__init__()
+        super().__init__(configd=True)
         self._interactive = False
         self._timeout_task = None
+        self.client = ConfigClient()
 
     async def __config(self):
-        from . import models  # noqa
-
-        config = await models.Config.load_async()
-        return config
+        return await self.client.get_async("nab8balld")
 
     async def reload_config(self):
-        from . import models  # noqa
-
         await self.setup_listener()
 
     async def setup_listener(self):
         config = await self.__config()
-        if config.enabled:
+        if config.get("enabled"):
             packet = (
                 ""
                 '{"type":"mode","mode":"idle",'
@@ -47,7 +44,7 @@ class Nab8Balld(NabService):
 
     async def perform(self, lang):
         config = await self.__config()
-        if config.use_tts:
+        if config.get("use_tts"):
             if lang and lang != "default":
                 with override(to_language(lang)):
                     text = _("Answer.")

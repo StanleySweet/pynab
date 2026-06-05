@@ -90,27 +90,14 @@ WSGI_APPLICATION = "nabweb.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 
+_DB_DIR = os.path.join(BASE_DIR, "data")
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "pynab",
-        "USER": "pynab",
-        "PASSWORD": "",
-        "HOST": "",
-        "PORT": "",
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": os.path.join(_DB_DIR, "pynab.db"),
     }
 }
-
-if "PGDATABASE" in os.environ:
-    DATABASES["default"]["NAME"] = os.environ["PGDATABASE"]
-if "PGUSER" in os.environ:
-    DATABASES["default"]["USER"] = os.environ["PGUSER"]
-if "PGPASSWORD" in os.environ:
-    DATABASES["default"]["PASSWORD"] = os.environ["PGPASSWORD"]
-if "PGHOST" in os.environ:
-    DATABASES["default"]["HOST"] = os.environ["PGHOST"]
-if "PGPORT" in os.environ:
-    DATABASES["default"]["PORT"] = os.environ["PGPORT"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 

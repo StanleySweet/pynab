@@ -1,10 +1,12 @@
+import asyncio
 import datetime
+import json
 import logging
 import sys
 
-from asgiref.sync import sync_to_async
 from django.utils.translation import gettext as _, override, to_language
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabInfoCachedService
 
 from . import aqicn
@@ -62,35 +64,36 @@ class NabAirqualityd(NabInfoCachedService):
 
     ANIMATIONS = [ANIMATION_BAD, ANIMATION_MODERATE, ANIMATION_GOOD]
 
+    def __init__(self):
+        super().__init__(configd=True)
+        self.client = ConfigClient()
+
     async def get_config(self):
-        from nabweatherd import models as weather_models
-
-        from . import models
-
-        weather_config = await weather_models.Config.load_async()
-        location = weather_config.location
+        weather_config = await self.client.get_async("nabweatherd")
+        location = json.loads(weather_config["location"])
         latitude = str(location["lat"])
         longitude = str(location["lon"])
 
-        config = await models.Config.load_async()
+        cfg = await self.client.get_dict_async("nabairqualityd")
         return (
-            config.next_performance_date,
-            config.next_performance_type,
+            cfg.next_performance_date,
+            cfg.next_performance_type,
             (
-                config.index_airquality,
-                config.visual_airquality,
+                cfg.index_airquality,
+                cfg.visual_airquality,
                 latitude,
                 longitude,
             ),
         )
 
     async def update_next(self, next_date, next_args):
-        from . import models
-
-        config = await models.Config.load_async()
-        config.next_performance_date = next_date
-        config.next_performance_type = next_args
-        await config.save_async()
+        await self.client.set_async(
+            "nabairqualityd",
+            {
+                "next_performance_date": next_date,
+                "next_performance_type": next_args,
+            },
+        )
 
     async def fetch_info_data(self, config_t):
         if config_t is None:
@@ -98,24 +101,24 @@ class NabAirqualityd(NabInfoCachedService):
         index_airquality, visual_airquality, latitude, longitude = config_t
         client = aqicn.aqicnClient(index_airquality, latitude, longitude)
         try:
-            await sync_to_async(client.update)()
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, client.update)
         except Exception as err:
             logging.error(f"{err}")
             return None
 
         # Save inferred localization to configuration for display on web
         # interface
-        from . import models
-
-        config = await models.Config.load_async()
+        cfg = await self.client.get_dict_async("nabairqualityd")
         city = client.get_city()
-        if city != config.localisation:
+        if city != cfg.localisation:
             logging.info(
                 f"location changed from: "
-                f"{str(config.localisation)} to: {str(city)}"
+                f"{str(cfg.localisation)} to: {str(city)}"
             )
-            config.localisation = city
-            await config.save_async()
+            await self.client.set_async(
+                "nabairqualityd", {"localisation": city}
+            )
 
         return {
             "visual_airquality": visual_airquality,
@@ -149,13 +152,12 @@ class NabAirqualityd(NabInfoCachedService):
             self.writer.write(packet.encode("utf8"))
             await self.writer.drain()
         elif type == "today":
-            from . import models
-            config = await models.Config.load_async()
-            logging.info(f"perform_additional: use_tts={config.use_tts}")
+            cfg = await self.client.get_dict_async("nabairqualityd")
+            logging.info(f"perform_additional: use_tts={cfg.use_tts}")
             message = NabAirqualityd.MESSAGES[info_data["data"]]
-            if config.use_tts:
-                from nabd.i18n import get_locale
-                user_locale = await get_locale()
+            if cfg.use_tts:
+                locale_cfg = await self.client.get_async("nabd")
+                user_locale = locale_cfg.get("locale", "fr_FR")
                 with override(to_language(user_locale)):
                     text = _("Air quality: %(quality)s") % {"quality": _(message.capitalize())}
                 audio = f"tts:{text}"

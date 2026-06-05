@@ -3,7 +3,6 @@ import re
 import sys
 from operator import attrgetter
 
-from django.utils.translation import gettext as _, override, to_language
 from mastodon import (
     Mastodon,
     MastodonError,
@@ -11,6 +10,7 @@ from mastodon import (
     StreamListener,
 )
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabService
 from nabcommon.typing import NabdPacket
 
@@ -38,16 +38,15 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
     }
 
     def __init__(self):
-        super().__init__()
+        super().__init__(configd=True)
+        self.client = ConfigClient()
         self.mastodon_client = None
         self.mastodon_stream_handle = None
         self.current_access_token = None
         self.listening_to_ears = False
 
     async def __config(self):
-        from . import models
-
-        return await models.Config.load_async()
+        return await self.client.get_async("nabmastodond")
 
     async def reload_config(self):
         await self.setup_streaming(True)
@@ -85,21 +84,21 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
             config, mastodon_client, status
         )
         if status_id is not None and (
-            config.last_processed_status_id is None
-            or status_id > config.last_processed_status_id
+            config.get("last_processed_status_id") is None
+            or status_id > config["last_processed_status_id"]
         ):
-            config.last_processed_status_id = status_id
+            config["last_processed_status_id"] = status_id
         if (
             status_date is not None
-            and status_date > config.last_processed_status_date
+            and status_date > config["last_processed_status_date"]
         ):
-            config.last_processed_status_date = status_date
-        await config.save_async()
+            config["last_processed_status_date"] = status_date
+        await self.client.set_async("nabmastodond", dict(config))
 
     async def process_conversations(self, mastodon_client, conversations):
         config = await self.__config()
-        max_date = config.last_processed_status_date
-        max_id = config.last_processed_status_id
+        max_date = config["last_processed_status_date"]
+        max_id = config.get("last_processed_status_id")
         conversations_last_statuses = map(
             attrgetter("last_status"), conversations
         )
@@ -117,18 +116,18 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
                 status_date is None or status_date > max_date
             ):
                 max_date = status_date
-        config.last_processed_status_date = max_date
-        config.last_processed_status_id = max_id
-        await config.save_async()
+        config["last_processed_status_date"] = max_date
+        config["last_processed_status_id"] = max_id
+        await self.client.set_async("nabmastodond", dict(config))
 
     async def process_status(self, config, mastodon_client, status):
         try:
             status_id = status["id"]
             status_date = status["created_at"]
             skip = False
-            if config.last_processed_status_id is not None:
-                skip = status_id <= config.last_processed_status_id
-            skip = skip or config.last_processed_status_date > status_date
+            if config.get("last_processed_status_id") is not None:
+                skip = status_id <= config["last_processed_status_id"]
+            skip = skip or config["last_processed_status_date"] > status_date
             if not skip:
                 await self.do_process_status(config, mastodon_client, status)
             return (status_id, status_date)
@@ -144,11 +143,11 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
             sender_url = sender_account["url"]
             if (
                 sender_url
-                != "https://" + config.instance + "/@" + config.username
+                != "https://" + config["instance"] + "/@" + config["username"]
             ):
                 sender = sender_account["acct"]
                 if "@" not in sender:
-                    sender = sender + "@" + config.instance
+                    sender = sender + "@" + config["instance"]
                 if "display_name" in sender_account:
                     sender_name = sender_account["display_name"]
                 else:
@@ -175,115 +174,113 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
         params,
         message_date,
     ):
-        current_state = config.spouse_pairing_state
+        current_state = config.get("spouse_pairing_state")
         matching = (
-            config.spouse_handle is not None and config.spouse_handle == sender
+            config.get("spouse_handle") is not None
+            and config["spouse_handle"] == sender
         )
         if current_state is None:
             if type == "proposal":
-                config.spouse_handle = sender
-                config.spouse_pairing_state = "waiting_approval"
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = sender
+                config["spouse_pairing_state"] = "waiting_approval"
+                config["spouse_pairing_date"] = message_date
                 await self.play_message("proposal_received", sender_name)
             elif type == "acceptation" or type == "ears":
                 NabMastodond.send_dm(mastodon_client, sender, "divorce")
-            # else ignore message
         elif current_state == "proposed":
             if matching and type == "rejection":
-                config.spouse_handle = None
-                config.spouse_pairing_state = None
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = None
+                config["spouse_pairing_state"] = None
+                config["spouse_pairing_date"] = message_date
                 await self.play_message("proposal_refused", sender_name)
             elif matching and type == "divorce":
-                config.spouse_handle = None
-                config.spouse_pairing_state = None
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = None
+                config["spouse_pairing_state"] = None
+                config["spouse_pairing_date"] = message_date
                 await self.play_message("proposal_refused", sender_name)
             elif matching and type == "acceptation":
-                config.spouse_handle = sender
-                config.spouse_pairing_state = "married"
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = sender
+                config["spouse_pairing_state"] = "married"
+                config["spouse_pairing_date"] = message_date
                 await self.send_start_listening_to_ears()
                 await self.play_message("proposal_accepted", sender_name)
             elif matching and type == "proposal":
                 NabMastodond.send_dm(mastodon_client, sender, "acceptation")
-                config.spouse_handle = sender
-                config.spouse_pairing_state = "married"
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = sender
+                config["spouse_pairing_state"] = "married"
+                config["spouse_pairing_date"] = message_date
                 await self.send_start_listening_to_ears()
                 await self.play_message("proposal_accepted", sender_name)
             elif not matching and (type == "acceptation" or type == "ears"):
                 NabMastodond.send_dm(mastodon_client, sender, "divorce")
             elif not matching and type == "proposal":
                 NabMastodond.send_dm(mastodon_client, sender, "rejection")
-            # else ignore
         elif current_state == "waiting_approval":
             if matching and type == "rejection":
-                config.spouse_handle = None
-                config.spouse_pairing_state = None
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = None
+                config["spouse_pairing_state"] = None
+                config["spouse_pairing_date"] = message_date
             elif matching and type == "divorce":
-                config.spouse_handle = None
-                config.spouse_pairing_state = None
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = None
+                config["spouse_pairing_state"] = None
+                config["spouse_pairing_date"] = message_date
                 await self.play_message("pairing_cancelled", sender_name)
             elif matching and type == "acceptation":
                 NabMastodond.send_dm(mastodon_client, sender, "divorce")
-                config.spouse_handle = None
-                config.spouse_pairing_state = None
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = None
+                config["spouse_pairing_state"] = None
+                config["spouse_pairing_date"] = message_date
             elif type == "proposal":
                 if not matching:
                     NabMastodond.send_dm(
-                        mastodon_client, config.spouse_handle, "rejection"
+                        mastodon_client, config["spouse_handle"], "rejection"
                     )
-                    config.spouse_handle = sender
-                config.spouse_pairing_date = message_date
+                    config["spouse_handle"] = sender
+                config["spouse_pairing_date"] = message_date
                 await self.play_message("proposal_received", sender_name)
             elif matching and type == "acceptation":
                 NabMastodond.send_dm(mastodon_client, sender, "divorce")
             elif not matching and (type == "acceptation" or type == "ears"):
                 NabMastodond.send_dm(mastodon_client, sender, "divorce")
-            # else ignore
         elif current_state == "married":
             if matching and type == "rejection":
-                config.spouse_handle = None
-                config.spouse_pairing_state = None
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = None
+                config["spouse_pairing_state"] = None
+                config["spouse_pairing_date"] = message_date
                 await self.send_stop_listening_to_ears()
                 await self.play_message("pairing_cancelled", sender_name)
             elif matching and type == "divorce":
-                config.spouse_handle = None
-                config.spouse_pairing_state = None
-                config.spouse_pairing_date = message_date
+                config["spouse_handle"] = None
+                config["spouse_pairing_state"] = None
+                config["spouse_pairing_date"] = message_date
                 await self.send_stop_listening_to_ears()
                 await self.play_message("pairing_cancelled", sender_name)
             elif matching and type == "acceptation":
-                config.spouse_pairing_date = message_date
+                config["spouse_pairing_date"] = message_date
             elif matching and type == "proposal":
                 NabMastodond.send_dm(mastodon_client, sender, "acceptation")
-                config.spouse_pairing_date = message_date
+                config["spouse_pairing_date"] = message_date
             elif not matching and (type == "acceptation" or type == "ears"):
                 NabMastodond.send_dm(mastodon_client, sender, "divorce")
             elif not matching and type == "proposal":
                 NabMastodond.send_dm(mastodon_client, sender, "rejection")
             elif matching and type == "ears":
                 await self.play_message("ears", sender_name)
-                config.spouse_left_ear_position = params["left"]
-                config.spouse_right_ear_position = params["right"]
-                config.spouse_pairing_date = message_date
+                config["spouse_left_ear_position"] = params["left"]
+                config["spouse_right_ear_position"] = params["right"]
+                config["spouse_pairing_date"] = message_date
                 await self.send_ears(params["left"], params["right"])
-            # else ignore
 
     async def play_message(self, message, sender_name):
         """
         Play pairing protocol message
         """
-        from . import models
-        config = await models.Config.load_async()
-        if config.use_tts and message != "ears":
-            from nabd.i18n import get_locale
-            user_locale = await get_locale()
+        cfg = await self.__config()
+        if cfg.get("use_tts") and message != "ears":
+            from django.utils.translation import gettext as _, override, to_language
+
+            locale_cfg = await self.client.get_async("nabd")
+            user_locale = locale_cfg.get("locale", "fr_FR")
             with override(to_language(user_locale)):
                 _TTS_TEXTS = {
                     "proposal_received": _("Pairing request received"),
@@ -391,28 +388,31 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
         setup = (
             reloading
             and self.mastodon_client is None
-            and config.spouse_handle is None
+            and config.get("spouse_handle") is None
         )
-        if config.access_token is None:
+        if config.get("access_token") is None:
             self.close_streaming()
         else:
-            if config.access_token != self.current_access_token:
+            if config.get("access_token") != self.current_access_token:
                 self.close_streaming()
             if self.mastodon_client is None:
                 try:
                     self.mastodon_client = Mastodon(
-                        client_id=config.client_id,
-                        client_secret=config.client_secret,
-                        access_token=config.access_token,
-                        api_base_url="https://" + config.instance,
+                        client_id=config["client_id"],
+                        client_secret=config["client_secret"],
+                        access_token=config["access_token"],
+                        api_base_url="https://" + config["instance"],
                     )
-                    self.current_access_token = config.access_token
+                    self.current_access_token = config["access_token"]
                     if setup:
-                        await self.play_message("setup", config.spouse_handle)
+                        await self.play_message(
+                            "setup", config.get("spouse_handle")
+                        )
                 except MastodonUnauthorizedError:
                     self.current_access_token = None
-                    config.access_token = None
-                    await config.save_async()
+                    await self.client.set_async(
+                        "nabmastodond", {"access_token": None}
+                    )
                 except MastodonError as e:
                     print(f"Unexpected mastodon error: {e}")
                     await asyncio.sleep(NabMastodond.RETRY_DELAY)
@@ -426,7 +426,7 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
                 )
             if self.mastodon_client is not None:
                 conversations = self.mastodon_client.conversations(
-                    since_id=config.last_processed_status_id
+                    since_id=config.get("last_processed_status_id")
                 )
                 await self.process_conversations(
                     self.mastodon_client, conversations
@@ -435,27 +435,31 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
     async def process_nabd_packet(self, packet: NabdPacket):
         if packet["type"] == "ears_event":
             config = await self.__config()
-            if config.spouse_pairing_state == "married":
+            if config.get("spouse_pairing_state") == "married":
                 if self.mastodon_client:
-                    await self.play_message("ears", config.spouse_handle)
-                    config.spouse_left_ear_position = packet["left"]
-                    config.spouse_right_ear_position = packet["right"]
-                    await config.save_async()
+                    await self.play_message("ears", config.get("spouse_handle"))
+                    await self.client.set_async(
+                        "nabmastodond",
+                        {
+                            "spouse_left_ear_position": packet["left"],
+                            "spouse_right_ear_position": packet["right"],
+                        },
+                    )
                     NabMastodond.send_dm(
                         self.mastodon_client,
-                        config.spouse_handle,
+                        config["spouse_handle"],
                         "ears",
                         {"left": packet["left"], "right": packet["right"]},
                     )
 
     async def setup_initial_state(self):
         config = await self.__config()
-        if config.spouse_pairing_state == "married":
+        if config.get("spouse_pairing_state") == "married":
             await self.send_start_listening_to_ears()
-            if config.spouse_left_ear_position is not None:
+            if config.get("spouse_left_ear_position") is not None:
                 await self.send_ears(
-                    config.spouse_left_ear_position,
-                    config.spouse_right_ear_position,
+                    config["spouse_left_ear_position"],
+                    config["spouse_right_ear_position"],
                 )
         else:
             await self.send_stop_listening_to_ears()
