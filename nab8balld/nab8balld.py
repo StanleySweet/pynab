@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import sys
 
 from django.utils.translation import gettext as _, override, to_language
@@ -9,6 +10,30 @@ from nabcommon.nabservice import NabService
 from nabcommon.typing import NabdPacket
 
 from . import rfid_data
+
+
+ANSWERS = [
+    "It is certain.",
+    "It is decidedly so.",
+    "Without a doubt.",
+    "Yes, definitely.",
+    "You may rely on it.",
+    "As I see it, yes.",
+    "Most likely.",
+    "Outlook good.",
+    "Yes.",
+    "Signs point to yes.",
+    "Reply hazy, try again.",
+    "Ask again later.",
+    "Better not tell you now.",
+    "Cannot predict now.",
+    "Concentrate and ask again.",
+    "Don't count on it.",
+    "My reply is no.",
+    "My sources say no.",
+    "Outlook not so good.",
+    "Very doubtful.",
+]
 
 
 class Nab8Balld(NabService):
@@ -48,11 +73,12 @@ class Nab8Balld(NabService):
         logging.info("nab8balld: performing answer, lang=%s", lang)
         config = await self.__config()
         if config.get("use_tts"):
+            answer = random.choice(ANSWERS)
             if lang and lang != "default":
                 with override(to_language(lang)):
-                    text = _("I have an answer for you.")
+                    text = _(answer)
             else:
-                text = _("I have an answer for you.")
+                text = _(answer)
             path = f"tts:{text}"
         else:
             if lang is None or lang == "default":

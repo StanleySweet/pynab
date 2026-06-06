@@ -96,3 +96,63 @@ msgstr "Annuler"
 # TTS
 msgid "I have an answer for you."
 msgstr "J'ai une réponse pour toi."
+
+msgid "It is certain."
+msgstr "C'est certain."
+
+msgid "It is decidedly so."
+msgstr "Absolument."
+
+msgid "Without a doubt."
+msgstr "Sans aucun doute."
+
+msgid "Yes, definitely."
+msgstr "Oui, définitivement."
+
+msgid "You may rely on it."
+msgstr "Tu peux compter dessus."
+
+msgid "As I see it, yes."
+msgstr "Tel que je le vois, oui."
+
+msgid "Most likely."
+msgstr "Très probable."
+
+msgid "Outlook good."
+msgstr "Ça s'annonce bien."
+
+msgid "Yes."
+msgstr "Oui."
+
+msgid "Signs point to yes."
+msgstr "Les signes indiquent que oui."
+
+msgid "Reply hazy, try again."
+msgstr "Réponse floue, essaie encore."
+
+msgid "Ask again later."
+msgstr "Demande plus tard."
+
+msgid "Better not tell you now."
+msgstr "Il vaut mieux ne pas te le dire maintenant."
+
+msgid "Cannot predict now."
+msgstr "Je ne peux pas prédire maintenant."
+
+msgid "Concentrate and ask again."
+msgstr "Concentre-toi et demande à nouveau."
+
+msgid "Don't count on it."
+msgstr "N'y compte pas."
+
+msgid "My reply is no."
+msgstr "Ma réponse est non."
+
+msgid "My sources say no."
+msgstr "Mes sources disent non."
+
+msgid "Outlook not so good."
+msgstr "Ça s'annonce mal."
+
+msgid "Very doubtful."
+msgstr "Très douteux."
