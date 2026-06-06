@@ -248,6 +248,15 @@ class NabWeatherd(NabInfoService):
         "Orages": ("stormy", STORMY_INFO_ANIMATION),
         "Averses orageuses": ("stormy", STORMY_INFO_ANIMATION),
         "Risque d'orages": ("stormy", STORMY_INFO_ANIMATION),
+        "Orage avec grêle": ("stormy", STORMY_INFO_ANIMATION),
+        # English weather class names (new Météo France API)
+        "Hazy sky": ("cloudy", CLOUDY_INFO_ANIMATION),
+        "Overcast sky": ("cloudy", CLOUDY_INFO_ANIMATION),
+        "Cloudy": ("cloudy", CLOUDY_INFO_ANIMATION),
+        "Slight rain": ("rainy", RAINY_INFO_ANIMATION),
+        "Slight showers": ("rainy", RAINY_INFO_ANIMATION),
+        "Storms": ("stormy", STORMY_INFO_ANIMATION),
+        "Thundershowers": ("stormy", STORMY_INFO_ANIMATION),
     }
 
     weather_bedtime_done = False
