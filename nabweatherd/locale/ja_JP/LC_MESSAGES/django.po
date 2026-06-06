@@ -1,0 +1,206 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-05-30 14:25+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: ja_JP\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: templates/nabweatherd/animations_help.html:5
+#: templates/nabweatherd/settings.html:6
+msgid "Weather"
+msgstr "天気"
+
+#: templates/nabweatherd/animations_help.html:11
+#: templates/nabweatherd/settings.html:9
+msgid "The weather forecast visual animations"
+msgstr "天気予報のビジュアルアニメーション"
+
+#: templates/nabweatherd/animations_help.html:17
+msgid "Sunshine"
+msgstr "晴れ"
+
+#: templates/nabweatherd/animations_help.html:18
+msgid "Rain"
+msgstr "雨"
+
+#: templates/nabweatherd/animations_help.html:19
+msgid "Cloudy"
+msgstr "曇り"
+
+#: templates/nabweatherd/animations_help.html:22
+msgid "Thunderstorm"
+msgstr "雷雨"
+
+#: templates/nabweatherd/animations_help.html:23
+msgid "Snow"
+msgstr "雪"
+
+#: templates/nabweatherd/animations_help.html:24
+#: templates/nabweatherd/settings.html:41
+msgid "Rain alert"
+msgstr "雨の警報"
+
+#: templates/nabweatherd/rfid-data.html:3
+msgid "Day"
+msgstr "日"
+
+#: templates/nabweatherd/rfid-data.html:7
+#: templates/nabweatherd/settings.html:63
+msgid "Today"
+msgstr "今日"
+
+#: templates/nabweatherd/rfid-data.html:11
+#: templates/nabweatherd/settings.html:64
+msgid "Tomorrow"
+msgstr "明日"
+
+#: templates/nabweatherd/settings.html:9
+msgid "The "
+msgstr ""
+
+#: templates/nabweatherd/settings.html:9
+msgid "visual animation"
+msgstr "ビジュアルアニメーション"
+
+#: templates/nabweatherd/settings.html:9
+msgid ""
+" can display, if available, a rain alert (blue blinking means get an "
+"umbrella, nothing will be displayed otherwise), the current weather forecast "
+"or both."
+msgstr "は、利用可能な場合、雨の警報（青く点滅したら傘を持っていきましょう。そうでなければ何も表示されません）、現在の天気予報、またはその両方を表示できます。"
+
+#: templates/nabweatherd/settings.html:10
+msgid "You can also "
+msgstr "また、"
+
+#: templates/nabweatherd/settings.html:10
+msgid "Speech recognition"
+msgstr "音声認識"
+
+#: templates/nabweatherd/settings.html:10
+msgid "ask your rabbit"
+msgstr "ウサギに尋ねることもできます"
+
+#: templates/nabweatherd/settings.html:10
+msgid " by saying for example <q>What is the weather forecast for today ?</q>."
+msgstr "。たとえば <q>今日の天気予報は？</q> と話しかけてください。"
+
+#: templates/nabweatherd/settings.html:12
+msgid "Location"
+msgstr "場所"
+
+#: templates/nabweatherd/settings.html:14
+msgid "City, Zip code, Country"
+msgstr "都市、郵便番号、国"
+
+#: templates/nabweatherd/settings.html:21
+msgid "Search..."
+msgstr "検索..."
+
+#: templates/nabweatherd/settings.html:26
+msgid "Unit"
+msgstr "単位"
+
+#: templates/nabweatherd/settings.html:29
+msgid "Celsius"
+msgstr "Celsius"
+
+#: templates/nabweatherd/settings.html:30
+msgid "Farenheit"
+msgstr "Farenheit"
+
+#: templates/nabweatherd/settings.html:31
+msgid "Kelvin"
+msgstr "Kelvin"
+
+#: templates/nabweatherd/settings.html:37
+msgid "Visual animation"
+msgstr "ビジュアルアニメーション"
+
+#: templates/nabweatherd/settings.html:40
+msgid "Current weather forecast"
+msgstr "現在の天気予報"
+
+#: templates/nabweatherd/settings.html:42
+msgid "Both"
+msgstr "両方"
+
+#: templates/nabweatherd/settings.html:43
+msgid "No visual animation"
+msgstr "ビジュアルアニメーションなし"
+
+#: templates/nabweatherd/settings.html:49
+msgid "Forecast frequency"
+msgstr "予報の頻度"
+
+#: templates/nabweatherd/settings.html:52
+msgid "Every hour"
+msgstr "毎時間"
+
+#: templates/nabweatherd/settings.html:53
+msgid "Every two to three hours"
+msgstr "2〜3時間ごと"
+
+#: templates/nabweatherd/settings.html:54
+msgid "At wake up and at bedtime"
+msgstr "起床時と就寝時"
+
+#: templates/nabweatherd/settings.html:55
+msgid "None"
+msgstr "なし"
+
+#: templates/nabweatherd/settings.html:61
+msgid "Forecast"
+msgstr "予報"
+
+#: templates/nabweatherd/settings.html:72
+msgid "Save"
+msgstr "保存"
+
+#: templates/nabweatherd/settings.html:73
+msgid "Reset"
+msgstr "リセット"
+
+#: templates/nabweatherd/settings.html:122
+msgid "Unknown server error"
+msgstr "不明なサーバーエラー"
+
+# TTS
+msgid "sunny"
+msgstr "晴れ"
+
+msgid "cloudy"
+msgstr "曇り"
+
+msgid "rainy"
+msgstr "雨"
+
+msgid "snowy"
+msgstr "雪"
+
+msgid "foggy"
+msgstr "霧"
+
+msgid "stormy"
+msgstr "嵐"
+
+msgid "%(type)s it will be %(weather)s, %(temp)d %(unit)s."
+msgstr "%(type)sは%(weather)sで、%(temp)d%(unit)sになります。"
+
+msgid "degrees Celsius"
+msgstr "摂氏度"
+
+msgid "degrees Fahrenheit"
+msgstr "華氏度"

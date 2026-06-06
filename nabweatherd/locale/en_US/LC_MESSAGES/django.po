@@ -1,0 +1,206 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-05-30 14:25+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: templates/nabweatherd/animations_help.html:5
+#: templates/nabweatherd/settings.html:6
+msgid "Weather"
+msgstr "Weather"
+
+#: templates/nabweatherd/animations_help.html:11
+#: templates/nabweatherd/settings.html:9
+msgid "The weather forecast visual animations"
+msgstr "The weather forecast visual animations"
+
+#: templates/nabweatherd/animations_help.html:17
+msgid "Sunshine"
+msgstr "Sunshine"
+
+#: templates/nabweatherd/animations_help.html:18
+msgid "Rain"
+msgstr "Rain"
+
+#: templates/nabweatherd/animations_help.html:19
+msgid "Cloudy"
+msgstr "Cloudy"
+
+#: templates/nabweatherd/animations_help.html:22
+msgid "Thunderstorm"
+msgstr "Thunderstorm"
+
+#: templates/nabweatherd/animations_help.html:23
+msgid "Snow"
+msgstr "Snow"
+
+#: templates/nabweatherd/animations_help.html:24
+#: templates/nabweatherd/settings.html:41
+msgid "Rain alert"
+msgstr "Rain alert"
+
+#: templates/nabweatherd/rfid-data.html:3
+msgid "Day"
+msgstr "Day"
+
+#: templates/nabweatherd/rfid-data.html:7
+#: templates/nabweatherd/settings.html:63
+msgid "Today"
+msgstr "Today"
+
+#: templates/nabweatherd/rfid-data.html:11
+#: templates/nabweatherd/settings.html:64
+msgid "Tomorrow"
+msgstr "Tomorrow"
+
+#: templates/nabweatherd/settings.html:9
+msgid "The "
+msgstr "The "
+
+#: templates/nabweatherd/settings.html:9
+msgid "visual animation"
+msgstr "visual animation"
+
+#: templates/nabweatherd/settings.html:9
+msgid ""
+" can display, if available, a rain alert (blue blinking means get an "
+"umbrella, nothing will be displayed otherwise), the current weather forecast "
+"or both."
+msgstr " can display, if available, a rain alert (blue blinking means get an umbrella, nothing will be displayed otherwise), the current weather forecast or both."
+
+#: templates/nabweatherd/settings.html:10
+msgid "You can also "
+msgstr "You can also "
+
+#: templates/nabweatherd/settings.html:10
+msgid "Speech recognition"
+msgstr "Speech recognition"
+
+#: templates/nabweatherd/settings.html:10
+msgid "ask your rabbit"
+msgstr "ask your rabbit"
+
+#: templates/nabweatherd/settings.html:10
+msgid " by saying for example <q>What is the weather forecast for today ?</q>."
+msgstr " by saying for example <q>What is the weather forecast for today ?</q>."
+
+#: templates/nabweatherd/settings.html:12
+msgid "Location"
+msgstr "Location"
+
+#: templates/nabweatherd/settings.html:14
+msgid "City, Zip code, Country"
+msgstr "City, Zip code, Country"
+
+#: templates/nabweatherd/settings.html:21
+msgid "Search..."
+msgstr "Search..."
+
+#: templates/nabweatherd/settings.html:26
+msgid "Unit"
+msgstr "Unit"
+
+#: templates/nabweatherd/settings.html:29
+msgid "Celsius"
+msgstr "Celsius"
+
+#: templates/nabweatherd/settings.html:30
+msgid "Farenheit"
+msgstr "Farenheit"
+
+#: templates/nabweatherd/settings.html:31
+msgid "Kelvin"
+msgstr "Kelvin"
+
+#: templates/nabweatherd/settings.html:37
+msgid "Visual animation"
+msgstr "Visual animation"
+
+#: templates/nabweatherd/settings.html:40
+msgid "Current weather forecast"
+msgstr "Current weather forecast"
+
+#: templates/nabweatherd/settings.html:42
+msgid "Both"
+msgstr "Both"
+
+#: templates/nabweatherd/settings.html:43
+msgid "No visual animation"
+msgstr "No visual animation"
+
+#: templates/nabweatherd/settings.html:49
+msgid "Forecast frequency"
+msgstr "Forecast frequency"
+
+#: templates/nabweatherd/settings.html:52
+msgid "Every hour"
+msgstr "Every hour"
+
+#: templates/nabweatherd/settings.html:53
+msgid "Every two to three hours"
+msgstr "Every two to three hours"
+
+#: templates/nabweatherd/settings.html:54
+msgid "At wake up and at bedtime"
+msgstr "At wake up and at bedtime"
+
+#: templates/nabweatherd/settings.html:55
+msgid "None"
+msgstr "None"
+
+#: templates/nabweatherd/settings.html:61
+msgid "Forecast"
+msgstr "Forecast"
+
+#: templates/nabweatherd/settings.html:72
+msgid "Save"
+msgstr "Save"
+
+#: templates/nabweatherd/settings.html:73
+msgid "Reset"
+msgstr "Reset"
+
+#: templates/nabweatherd/settings.html:122
+msgid "Unknown server error"
+msgstr "Unknown server error"
+
+# TTS
+msgid "sunny"
+msgstr "sunny"
+
+msgid "cloudy"
+msgstr "cloudy"
+
+msgid "rainy"
+msgstr "rainy"
+
+msgid "snowy"
+msgstr "snowy"
+
+msgid "foggy"
+msgstr "foggy"
+
+msgid "stormy"
+msgstr "stormy"
+
+msgid "%(type)s it will be %(weather)s, %(temp)d %(unit)s."
+msgstr "%(type)s it will be %(weather)s, %(temp)d %(unit)s."
+
+msgid "degrees Celsius"
+msgstr "degrees Celsius"
+
+msgid "degrees Fahrenheit"
+msgstr "degrees Fahrenheit"

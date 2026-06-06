@@ -1,0 +1,137 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-05-30 18:45+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: templates/nabairqualityd/animations_help.html:5
+#: templates/nabairqualityd/settings.html:6
+msgid "Air quality"
+msgstr "Qualidade do ar"
+
+#: templates/nabairqualityd/animations_help.html:11
+#: templates/nabairqualityd/settings.html:9
+msgid "The air quality visual animations"
+msgstr "As animações visuais da qualidade do ar"
+
+#: templates/nabairqualityd/animations_help.html:17
+msgid "Bad"
+msgstr "Ruim"
+
+#: templates/nabairqualityd/animations_help.html:18
+msgid "Moderate"
+msgstr "Moderada"
+
+#: templates/nabairqualityd/animations_help.html:19
+msgid "Good"
+msgstr "Boa"
+
+#: templates/nabairqualityd/rfid-data.html:5
+msgid ""
+"When Nabaztag sees that NFC tag it will give you information about air "
+"quality. It's as simple as that."
+msgstr "Quando o Nabaztag vir essa tag NFC, ele dará informações sobre a qualidade do ar. Simples assim."
+
+#: templates/nabairqualityd/settings.html:9
+msgid "The "
+msgstr "A "
+
+#: templates/nabairqualityd/settings.html:9
+msgid "visual animation"
+msgstr "animação visual"
+
+#: templates/nabairqualityd/settings.html:9
+msgid ""
+" displays air quality information based on the location selected for "
+"Weather. You can select the type of information you want : Aggregate index "
+"(AQI) or just particulate matter (PM 2.5)."
+msgstr " exibe informações sobre a qualidade do ar com base na localização selecionada para o Clima. Você pode escolher o tipo de informação que deseja: índice agregado (AQI) ou apenas material particulado (PM 2.5)."
+
+#: templates/nabairqualityd/settings.html:10
+msgid "You can also "
+msgstr "Você também pode "
+
+#: templates/nabairqualityd/settings.html:10
+msgid "Speech recognition"
+msgstr "Reconhecimento de fala"
+
+#: templates/nabairqualityd/settings.html:10
+msgid "ask your rabbit"
+msgstr "perguntar ao seu coelho"
+
+#: templates/nabairqualityd/settings.html:10
+msgid " by saying such things as <q>What is the air quality today ?</q>."
+msgstr " dizendo algo como <q>Como está a qualidade do ar hoje?</q>."
+
+#: templates/nabairqualityd/settings.html:13
+msgid "Location"
+msgstr "Localização"
+
+#: templates/nabairqualityd/settings.html:15
+msgid "Station location"
+msgstr "Localização da estação"
+
+#: templates/nabairqualityd/settings.html:20
+msgid "Index"
+msgstr "Índice"
+
+#: templates/nabairqualityd/settings.html:23
+msgid "AQI"
+msgstr "AQI"
+
+#: templates/nabairqualityd/settings.html:24
+msgid "PM 2.5"
+msgstr "PM 2.5"
+
+#: templates/nabairqualityd/settings.html:30
+msgid "Visual animation"
+msgstr "Animação visual"
+
+#: templates/nabairqualityd/settings.html:33
+msgid "Always-on"
+msgstr "Sempre ativa"
+
+#: templates/nabairqualityd/settings.html:34
+msgid "Alert only"
+msgstr "Somente alertas"
+
+#: templates/nabairqualityd/settings.html:35
+msgid "No visual animation"
+msgstr "Sem animação visual"
+
+#: templates/nabairqualityd/settings.html:41
+msgid "Forecast"
+msgstr "Previsão"
+
+#: templates/nabairqualityd/settings.html:43
+msgid "Today"
+msgstr "Hoje"
+
+#: templates/nabairqualityd/settings.html:50
+msgid "Save"
+msgstr "Salvar"
+
+#: templates/nabairqualityd/settings.html:51
+msgid "Reset"
+msgstr "Redefinir"
+
+#: templates/nabairqualityd/settings.html:81
+msgid "Unknown server error"
+msgstr "Erro desconhecido do servidor"
+
+# TTS
+msgid "The air quality is %(quality)s today."
+msgstr "A qualidade do ar está %(quality)s hoje."
