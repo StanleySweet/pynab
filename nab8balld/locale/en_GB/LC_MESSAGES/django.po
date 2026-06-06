@@ -153,3 +153,13 @@ msgstr "never you hear me, never"
 
 msgid "indubitably"
 msgstr "indubitably"
+
+
+msgid "don't get too involved"
+msgstr "don't get too involved"
+
+msgid "people will be there to help you"
+msgstr "people will be there to help you"
+
+msgid "best thing to do is to just laugh it off"
+msgstr "best thing to do is to just laugh it off"

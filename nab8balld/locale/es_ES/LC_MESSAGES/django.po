@@ -153,3 +153,13 @@ msgstr "nunca, ¿me oyes?"
 
 msgid "indubitably"
 msgstr "indiscutiblemente"
+
+
+msgid "don't get too involved"
+msgstr "no te impliques demasiado"
+
+msgid "people will be there to help you"
+msgstr "la gente te ayudará"
+
+msgid "best thing to do is to just laugh it off"
+msgstr "mejor reírse, en fin, eso digo yo..."

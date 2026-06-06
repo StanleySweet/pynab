@@ -153,3 +153,13 @@ msgstr "jamais tu m'entends"
 
 msgid "indubitably"
 msgstr "incontestablement"
+
+
+msgid "don't get too involved"
+msgstr "ne t'implique pas trop"
+
+msgid "people will be there to help you"
+msgstr "des gens t'aideront"
+
+msgid "best thing to do is to just laugh it off"
+msgstr "mieux vaut en rire, hein. Enfin je dis ça..."

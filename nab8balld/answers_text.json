@@ -232,7 +232,11 @@
     "decf96.mp3": "bon ben si tu peux pas résister",
     "decf97.mp3": "la solution de travail d'équipe c'est sûr",
     "decf98.mp3": "et bah tu vois la solution est peut-être pas celle que tu crois",
-    "decf99.mp3": "passe à autre chose"
+    "decf99.mp3": "passe à autre chose",
+    "decf80.mp3": "ne t'implique pas trop",
+    "decf111.mp3": "des gens t'aideront",
+    "decf131.mp3": "mieux vaut en rire, hein. Enfin je dis ça...",
+    "decf153.mp3": "[effets sonores : râles de mort]"
   },
   "en_US": {
     "decu001.mp3": "I come bearing very good news, I think it's a go",
@@ -410,7 +414,15 @@
     "decu182.mp3": "then step two",
     "decu183.mp3": "it'll work I'm sure but only if you get rid of that horrible lamp",
     "decu184.mp3": "no need to worry one day all of this will make sense",
-    "decu185.mp3": "you're going to absolutely love it"
+    "decu185.mp3": "you're going to absolutely love it",
+    "decu011.mp3": "anyway there's nothing you can do about it",
+    "decu016.mp3": "I knew it, I just knew you were going to ask me that, it's unbelievable",
+    "decu062.mp3": "ok you can try but only once because it won't work twice",
+    "decu080.mp3": "keep at it and you'll see",
+    "decu106.mp3": "you need to think of another solution",
+    "decu130.mp3": "take your time to decide",
+    "decu136.mp3": "honestly if I were you I wouldn't know what to do either",
+    "decu154.mp3": "I know someone who did it but we never heard from them again"
   },
   "en_GB": {
     "decen001.mp3": "hey listen I think this is good news it's a go",
@@ -757,7 +769,8 @@
     "decal180.mp3": "okay aber Schritt für Schritt",
     "decal182.mp3": "das wird auf jeden Fall klappen wenn du natürlich die olle Lampe wechselst",
     "decal183.mp3": "keine Sorge irgendwann wird's dir klar werden",
-    "decal184.mp3": "du wirst es lieben"
+    "decal184.mp3": "du wirst es lieben",
+    "decal004.mp3": "du musst erst noch mehr Informationen sammeln, das ist alles noch zu vage um eine Entscheidung zu treffen"
   },
   "es_ES": {
     "zene001.mp3": "debes aceptarlo eso te cambiaría tu tren de vida",

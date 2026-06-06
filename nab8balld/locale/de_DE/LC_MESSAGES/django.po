@@ -153,3 +153,13 @@ msgstr "niemals, hörst du"
 
 msgid "indubitably"
 msgstr "ohne jeden Zweifel"
+
+
+msgid "don't get too involved"
+msgstr "mach dich nicht zu sehr ran"
+
+msgid "people will be there to help you"
+msgstr "die Leute werden dir schon helfen"
+
+msgid "best thing to do is to just laugh it off"
+msgstr "lieber drüber lachen"

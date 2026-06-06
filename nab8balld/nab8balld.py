@@ -33,6 +33,9 @@ ANSWERS = [
     "that's for sure",
     "never",
     "indubitably",
+    "don't get too involved",
+    "people will be there to help you",
+    "best thing to do is to just laugh it off",
 ]
 
 
