@@ -59,17 +59,9 @@ _DATETIME_FIELDS = {
 
 
 def _parse_iso_datetime(s):
-    """Parse ISO 8601 datetime string to timezone-aware UTC, compatible with Python 3.7."""
-    s = s.replace("Z", "+00:00")
-    if "+" in s:
-        s = s.split("+")[0]
-    fmts = ["%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"]
-    for fmt in fmts:
-        try:
-            return datetime.datetime.strptime(s, fmt).replace(tzinfo=datetime.timezone.utc)
-        except ValueError:
-            continue
-    raise ValueError(f"cannot parse datetime: {s}")
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    return datetime.datetime.fromisoformat(s)
 
 
 class AttrDict(dict):
