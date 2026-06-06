@@ -65,7 +65,7 @@ class NabAirqualityd(NabInfoCachedService):
     ANIMATIONS = [ANIMATION_BAD, ANIMATION_MODERATE, ANIMATION_GOOD]
 
     def __init__(self):
-        super().__init__(configd=True)
+        super().__init__(configd=True, translations=True)
         self.client = ConfigClient()
 
     async def get_config(self):

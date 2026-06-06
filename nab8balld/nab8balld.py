@@ -14,7 +14,7 @@ class Nab8Balld(NabService):
     DAEMON_PIDFILE = "/run/nab8balld.pid"
 
     def __init__(self):
-        super().__init__(configd=True)
+        super().__init__(configd=True, translations=True)
         self._interactive = False
         self._timeout_task = None
         self.client = ConfigClient()

@@ -19,6 +19,7 @@ from lockfile import AlreadyLocked, LockFailed  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
 
 from nabcommon import hardware, nablogging, network, settings
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabService
 from nabcommon.typing import (
     Animation,
@@ -101,8 +102,9 @@ class Nabd:
     SYSTEMD_ACTIVATED_FD = 3
 
     def __init__(self, nabio: NabIO):
-        settings.configure(type(self).__name__.lower())
+        settings.configure("nabd", orm=False)
         self.nabio = nabio
+        self.client = ConfigClient()
         self.idle_cv = asyncio.Condition()
         self.idle_queue: Deque[IdleQueueItem] = collections.deque()
         # Current position of ears in idle mode
@@ -127,15 +129,15 @@ class Nabd:
         self.playing_request_id: Optional[str] = None
         Nabd.leds_boot(self.nabio, 2)
         if self.nabio.has_sound_input():
-            from . import i18n
             from .asr import ASR
             from .nlu import NLU
 
-            config = i18n.Config.load()
-            self._asr_locale = ASR.get_locale(config.locale)
+            config = self.client.get("nabd")
+            locale = config.get("locale", "fr_FR")
+            self._asr_locale = ASR.get_locale(locale)
             self.asr: Optional[ASR] = ASR(self._asr_locale)
             Nabd.leds_boot(self.nabio, 3)
-            self._nlu_locale = NLU.get_locale(config.locale)
+            self._nlu_locale = NLU.get_locale(locale)
             self.nlu: Optional[NLU] = NLU(self._nlu_locale)
             Nabd.leds_boot(self.nabio, 4)
         else:
@@ -147,13 +149,13 @@ class Nabd:
         Reload configuration.
         """
         if self.nabio.has_sound_input():
-            from . import i18n
             from .asr import ASR
             from .nlu import NLU
 
-            config = await i18n.Config.load_async()
-            new_asr_locale = ASR.get_locale(config.locale)
-            new_nlu_locale = NLU.get_locale(config.locale)
+            config = await self.client.get_async("nabd")
+            locale = config.get("locale", "fr_FR")
+            new_asr_locale = ASR.get_locale(locale)
+            new_nlu_locale = NLU.get_locale(locale)
             if new_asr_locale != self._asr_locale:
                 Nabd.leds_boot(self.nabio, 2)
                 self._asr_locale = new_asr_locale

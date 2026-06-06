@@ -25,11 +25,11 @@ class NabService(ABC):
     PORT_NUMBER = int(os.getenv("NABD_PORT_NUMBER", "10543"))
     HOST = os.getenv("NABD_HOST", "127.0.0.1")
 
-    def __init__(self, configd=False):
+    def __init__(self, configd=False, translations=False):
         if not configd:
             settings.configure(type(self).__name__.lower())
         else:
-            settings.configure(type(self).__name__.lower(), orm=False)
+            settings.configure(type(self).__name__.lower(), orm=False, translations=translations)
         self.reader = None
         self.writer = None
         self.loop = None
@@ -251,8 +251,8 @@ class NabRecurrentService(NabService, ABC):
         # Other (error recovery)
         OTHER = 4
 
-    def __init__(self, configd=False):
-        super().__init__(configd=configd)
+    def __init__(self, configd=False, translations=False):
+        super().__init__(configd=configd, translations=translations)
         self.reason = NabRecurrentService.Reason.BOOT
         self.loop_cv = asyncio.Condition()
 
@@ -547,8 +547,8 @@ class NabInfoCachedService(NabInfoService, ABC):
     Info is cached for 1 hour.
     """
 
-    def __init__(self, configd=False):
-        super().__init__(configd=configd)
+    def __init__(self, configd=False, translations=False):
+        super().__init__(configd=configd, translations=translations)
         self.cached_info = None
         self.cached_info_config = None
         self.cached_info_expdate = None

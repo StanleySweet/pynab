@@ -38,7 +38,7 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
     }
 
     def __init__(self):
-        super().__init__(configd=True)
+        super().__init__(configd=True, translations=True)
         self.client = ConfigClient()
         self.mastodon_client = None
         self.mastodon_stream_handle = None

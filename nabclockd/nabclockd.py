@@ -18,7 +18,7 @@ class NabClockd(nabservice.NabService):
     DAEMON_PIDFILE = "/run/nabclockd.pid"
 
     def __init__(self):
-        super().__init__(configd=True)
+        super().__init__(configd=True, translations=True)
         from nabcommon.config_client import ConfigClient
 
         self.client = ConfigClient()

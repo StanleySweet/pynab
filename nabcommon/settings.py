@@ -4,12 +4,11 @@ from django.apps import apps
 from django.conf import settings
 
 
-def configure(appname, orm=True):
+def configure(appname="", orm=True, translations=False):
     if not settings.configured:
-        conf = {
-            "INSTALLED_APPS": [appname],
-            "USE_TZ": True,
-        }
+        conf = {"USE_TZ": True}
+        if orm or translations:
+            conf["INSTALLED_APPS"] = [appname] if appname else []
         if orm:
             _DB_DIR = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -22,4 +21,5 @@ def configure(appname, orm=True):
                 }
             }
         settings.configure(**conf)
-        apps.populate(settings.INSTALLED_APPS)
+        if orm or translations:
+            apps.populate(settings.INSTALLED_APPS)

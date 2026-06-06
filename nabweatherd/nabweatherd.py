@@ -254,7 +254,7 @@ class NabWeatherd(NabInfoService):
     weather_wakeup_done = False
 
     def __init__(self):
-        super().__init__(configd=True)
+        super().__init__(configd=True, translations=True)
         self.client = ConfigClient()
 
     async def perform(self, expiration, args, config):
