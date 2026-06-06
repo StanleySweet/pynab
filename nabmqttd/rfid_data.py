@@ -3,14 +3,14 @@ Serialize & unserialize RFID application data
 """
 import json
 
+from nabcommon.config_client import ConfigClient
+
 
 async def read_data_ui(uid):
-    from . import models
-
-    config = await models.Config.load_async()
-
+    client = ConfigClient()
+    config = client.get("nabmqttd")
     try:
-        uid_data_base = json.loads(config.json_data_base)
+        uid_data_base = json.loads(config.get("json_data_base", "{}"))
     except Exception:
         uid_data_base = []
 
@@ -23,18 +23,15 @@ async def read_data_ui(uid):
 
 
 async def write_data_ui(uid, event_name):
-    from . import models
-
-    config = await models.Config.load_async()
-
+    client = ConfigClient()
+    config = client.get("nabmqttd")
     try:
-        uid_data_base = json.loads(config.json_data_base)
+        uid_data_base = json.loads(config.get("json_data_base", "{}"))
     except Exception:
         uid_data_base = {}
 
     uid_data_base[uid] = event_name
-    config.json_data_base = json.dumps(uid_data_base)
-    await config.save_async()
+    client.set("nabmqttd", {"json_data_base": json.dumps(uid_data_base)})
 
 
 def read_data_ui_for_views(uid):

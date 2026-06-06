@@ -7,6 +7,7 @@ import uuid
 
 import paho.mqtt.client as mqtt
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabService
 
 
@@ -135,7 +136,8 @@ def _rgb_to_choreography(r, g, b, brightness=255):
 
 class NabMqttd(NabService):
     def __init__(self):
-        super().__init__()
+        super().__init__(configd=True)
+        self.client = ConfigClient()
         self.mqtt_client = None
         self.mqtt_connected = False
         self.config = None
@@ -145,24 +147,20 @@ class NabMqttd(NabService):
 
     async def reload_config(self):
         logging.info("reloading configuration")
-        from . import models
-
-        self.config = await models.Config.load_async()
+        self.config = await self.client.get_async("nabmqttd")
         await self._disconnect_mqtt()
         self._connect_mqtt()
 
     def start_service_loop(self, loop):
         self.loop = loop
-        from . import models
-
-        self.config = models.Config.load()
+        self.config = self.client.get("nabmqttd")
         loop.call_soon(self._connect_mqtt)
         return None
 
     def _get_device_id(self):
         if self.config is None:
             return _get_mac() or "nabaztag_" + uuid.uuid4().hex[:8]
-        did = self.config.device_id
+        did = self.config.get("device_id")
         if did:
             return did
         return _get_mac() or "nabaztag_" + uuid.uuid4().hex[:8]
@@ -170,15 +168,16 @@ class NabMqttd(NabService):
     def _connect_mqtt(self):
         if self.config is None:
             return
-        host = self.config.broker_host
-        port = self.config.broker_port
-        username = self.config.broker_username or None
-        password = self.config.broker_password or None
-        tls = self.config.broker_tls
+        host = self.config.get("broker_host", "localhost")
+        port = self.config.get("broker_port", 1883)
+        username = self.config.get("broker_username") or None
+        password = self.config.get("broker_password") or None
+        tls = self.config.get("broker_tls", False)
         device_id = self._get_device_id()
         self._effective_device_id = device_id
-        self._discovery_prefix = self.config.discovery_prefix or "homeassistant"
-        self._topic_prefix = self.config.topic_prefix or "nabaztag"
+
+        self._discovery_prefix = self.config.get("discovery_prefix", "homeassistant")
+        self._topic_prefix = self.config.get("topic_prefix", "nabaztag")
 
         client_id = f"{device_id}_mqtt"
         self.mqtt_client = mqtt.Client(client_id=client_id)
@@ -387,49 +386,48 @@ class NabMqttd(NabService):
 
     async def _trigger_service(self, service_name: str, type: str):
         try:
+            now = datetime.datetime.now(datetime.timezone.utc)
             if service_name == "nabweatherd":
-                from nabweatherd.models import Config as WeatherConfig
                 from nabweatherd.nabweatherd import NabWeatherd
 
-                cfg = await WeatherConfig.load_async()
-                cfg.next_performance_date = datetime.datetime.now(
-                    datetime.timezone.utc
+                await self.client.set_async(
+                    "nabweatherd",
+                    {
+                        "next_performance_date": now,
+                        "next_performance_type": type,
+                    },
                 )
-                cfg.next_performance_type = type
-                await cfg.save_async()
                 NabWeatherd.signal_daemon()
             elif service_name == "nabairqualityd":
-                from nabairqualityd.models import Config as AQConfig
                 from nabairqualityd.nabairqualityd import NabAirqualityd
 
-                cfg = await AQConfig.load_async()
-                cfg.next_performance_date = datetime.datetime.now(
-                    datetime.timezone.utc
+                await self.client.set_async(
+                    "nabairqualityd",
+                    {
+                        "next_performance_date": now,
+                        "next_performance_type": type,
+                    },
                 )
-                cfg.next_performance_type = type
-                await cfg.save_async()
                 NabAirqualityd.signal_daemon()
         except Exception as e:
             logging.error(f"Failed to trigger {service_name}: {e}")
 
     async def _trigger_taichi(self):
         try:
-            from nabtaichid.models import Config as TaiChiConfig
             from nabtaichid.nabtaichid import NabTaichid
 
-            cfg = await TaiChiConfig.load_async()
-            cfg.next_taichi = datetime.datetime.now(datetime.timezone.utc)
-            await cfg.save_async()
+            now = datetime.datetime.now(datetime.timezone.utc)
+            await self.client.set_async(
+                "nabtaichid", {"next_taichi": now}
+            )
             NabTaichid.signal_daemon()
         except Exception as e:
             logging.error(f"Failed to trigger taichi: {e}")
 
     async def _trigger_radio(self, url: str = ""):
         if not url:
-            from . import models
-
-            cfg = models.Config.load()
-            url = cfg.default_radio_url or ""
+            cfg = self.client.get("nabmqttd")
+            url = cfg.get("default_radio_url", "") or ""
         if url:
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=5)

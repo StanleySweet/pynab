@@ -11,7 +11,7 @@ from . import rfid_data
 
 class NabBookd(NabService):
     def __init__(self):
-        super().__init__()
+        super().__init__(configd=True)
         self.__isbn = None
         self.__voice = None
         self.__current_chapter = None

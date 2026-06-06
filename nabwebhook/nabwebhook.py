@@ -10,7 +10,7 @@ from . import rfid_data
 
 class NabWebhook(NabService):
     def __init__(self):
-        super().__init__()
+        super().__init__(configd=True)
 
     async def reload_config(self):
         pass

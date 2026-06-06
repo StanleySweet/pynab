@@ -3,6 +3,7 @@ import sys
 
 import requests
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabService
 
 from . import rfid_data
@@ -10,22 +11,21 @@ from . import rfid_data
 
 class NabIftttd(NabService):
     def __init__(self):
-        super().__init__()
+        super().__init__(configd=True)
+        self.client = ConfigClient()
         self.__email = None
 
     async def reload_config(self):
         pass
 
     async def _call_ifttt(self, event_name, uid):
-        from . import models
-
-        config = await models.Config.load_async()
+        config = await self.client.get_async("nabiftttd")
 
         ifttt_url = (
             "https://maker.ifttt.com/trigger/"
             + event_name
             + "/with/key/"
-            + config.ifttt_key
+            + config.get("ifttt_key", "")
             + "?value1="
             + uid
             + "&value2=❤️&value3=🐇"

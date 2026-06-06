@@ -2,6 +2,7 @@ import datetime
 import random
 import sys
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabRandomService
 from nabcommon.typing import NabdPacket
 
@@ -9,18 +10,18 @@ from nabcommon.typing import NabdPacket
 class NabTaichid(NabRandomService):
     DAEMON_PIDFILE = "/run/nabtaichid.pid"
 
-    async def get_config(self):
-        from . import models
+    def __init__(self):
+        super().__init__(configd=True)
+        self.client = ConfigClient()
 
-        config = await models.Config.load_async()
-        return (config.next_taichi, None, config.taichi_frequency)
+    async def get_config(self):
+        config = await self.client.get_async("nabtaichid")
+        return (config.get("next_taichi"), None, config.get("taichi_frequency", 30))
 
     async def update_next(self, next_date, next_args):
-        from . import models
-
-        config = await models.Config.load_async()
-        config.next_taichi = next_date
-        await config.save_async()
+        await self.client.set_async(
+            "nabtaichid", {"next_taichi": next_date}
+        )
 
     async def perform(self, expiration, args, config):
         packet = (

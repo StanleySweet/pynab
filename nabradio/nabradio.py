@@ -2,6 +2,7 @@ import datetime
 import logging
 import sys
 
+from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabService
 
 from . import rfid_data
@@ -9,21 +10,23 @@ from . import rfid_data
 
 class NabRadio(NabService):
     def __init__(self):
-        super().__init__()
+        super().__init__(configd=True)
+        self.client = ConfigClient()
 
     async def reload_config(self):
-        from .models import Config
-
-        config = await Config.load_async()
-        if config.next_radio_date is not None:
+        config = await self.client.get_async("nabradio")
+        next_radio_date = config.get("next_radio_date")
+        if next_radio_date is not None:
             now = datetime.datetime.now(datetime.timezone.utc)
-            if config.next_radio_url:
-                await self._launch_radio(config.next_radio_url)
+            next_radio_url = config.get("next_radio_url", "")
+            if next_radio_url:
+                await self._launch_radio(next_radio_url)
             else:
                 await self._stop_radio()
-            config.next_radio_date = None
-            config.next_radio_url = ""
-            await config.save_async()
+            await self.client.set_async(
+                "nabradio",
+                {"next_radio_date": None, "next_radio_url": ""},
+            )
 
     async def _launch_radio(self, streaming_url):
         logging.info("streaming radio " + streaming_url)
