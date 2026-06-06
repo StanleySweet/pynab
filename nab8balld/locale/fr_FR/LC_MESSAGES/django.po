@@ -94,5 +94,5 @@ msgid "Reset"
 msgstr "Annuler"
 
 # TTS
-msgid "Answer."
-msgstr "Réponse."
+msgid "I have an answer for you."
+msgstr "J'ai une réponse pour toi."

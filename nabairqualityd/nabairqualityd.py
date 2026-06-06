@@ -102,7 +102,12 @@ class NabAirqualityd(NabInfoCachedService):
         client = aqicn.aqicnClient(index_airquality, latitude, longitude)
         try:
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, client.update)
+            await asyncio.wait_for(
+                loop.run_in_executor(None, client.update), timeout=20
+            )
+        except asyncio.TimeoutError:
+            logging.error("aqicn request timed out after 20 seconds")
+            return None
         except Exception as err:
             logging.error(f"{err}")
             return None
@@ -159,7 +164,7 @@ class NabAirqualityd(NabInfoCachedService):
                 locale_cfg = await self.client.get_async("nabd")
                 user_locale = locale_cfg.get("locale", "fr_FR")
                 with override(to_language(user_locale)):
-                    text = _("Air quality: %(quality)s") % {"quality": _(message.capitalize())}
+                    text = _("The air quality is %(quality)s today.") % {"quality": _(message.capitalize())}
                 audio = f"tts:{text}"
             else:
                 audio = "nabairqualityd/" + message + ".mp3"

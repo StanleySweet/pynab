@@ -606,14 +606,14 @@ class NabWeatherd(NabInfoService):
                 with override(to_language(user_locale)):
                     if unit == NabWeatherd.UNIT_FARENHEIT:
                         max_temp_f = round(max_temp * 1.8 + 32.0)
-                        text = _("%(type)s: %(weather)s, %(temp)d %(unit)s") % {
+                        text = _("%(type)s it will be %(weather)s, %(temp)d %(unit)s.") % {
                             "type": _(type.capitalize()),
                             "weather": _(weather_class),
                             "temp": max_temp_f,
                             "unit": _("degrees Fahrenheit"),
                         }
                     else:
-                        text = _("%(type)s: %(weather)s, %(temp)d %(unit)s") % {
+                        text = _("%(type)s it will be %(weather)s, %(temp)d %(unit)s.") % {
                             "type": _(type.capitalize()),
                             "weather": _(weather_class),
                             "temp": max_temp,

@@ -199,8 +199,8 @@ msgstr "brumeux"
 msgid "stormy"
 msgstr "orageux"
 
-msgid "%(type)s: %(weather)s, %(temp)d %(unit)s"
-msgstr "%(type)s : %(weather)s, %(temp)d %(unit)s"
+msgid "%(type)s it will be %(weather)s, %(temp)d %(unit)s."
+msgstr "%(type)s il fera %(weather)s, %(temp)d %(unit)s."
 
 msgid "degrees Celsius"
 msgstr "degrés Celsius"

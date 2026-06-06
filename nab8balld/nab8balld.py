@@ -47,9 +47,9 @@ class Nab8Balld(NabService):
         if config.get("use_tts"):
             if lang and lang != "default":
                 with override(to_language(lang)):
-                    text = _("Answer.")
+                    text = _("I have an answer for you.")
             else:
-                text = _("Answer.")
+                text = _("I have an answer for you.")
             path = f"tts:{text}"
         else:
             if lang is None or lang == "default":

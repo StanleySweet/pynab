@@ -6,8 +6,8 @@ StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-Restart=always
-RestartSec=1
+Restart=on-failure
+RestartSec=5
 User=root
 ExecStart=/usr/local/bin/configd
 Environment=PYNAB_DB_PATH=/opt/pynab/data/pynab.db

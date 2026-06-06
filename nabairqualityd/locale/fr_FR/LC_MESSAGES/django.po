@@ -137,5 +137,5 @@ msgid "Unknown server error"
 msgstr "Erreur inconnue du serveur"
 
 # TTS
-msgid "Air quality: %(quality)s"
-msgstr "Qualité de l'air : %(quality)s"
+msgid "The air quality is %(quality)s today."
+msgstr "La qualité de l'air est %(quality)s aujourd'hui."
