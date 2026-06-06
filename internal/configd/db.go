@@ -18,6 +18,17 @@ func Open(path string) (*DB, error) {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
 	db.SetMaxOpenConns(1)
+
+	// Set WAL mode + busy timeout to handle concurrent access with gunicorn.
+	pragmas := []string{
+		"PRAGMA journal_mode = WAL",
+		"PRAGMA busy_timeout = 8000",
+	}
+	for _, p := range pragmas {
+		if _, err := db.Exec(p); err != nil {
+			return nil, fmt.Errorf("%s: %w", p, err)
+		}
+	}
 	return &DB{db}, nil
 }
 

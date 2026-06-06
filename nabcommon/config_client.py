@@ -19,9 +19,15 @@ import datetime
 import json
 import os
 import socket
+import time
 
 
 class ConfigError(Exception):
+    pass
+
+
+class ConfigTimeoutError(ConfigError):
+    """Raised when configd is unreachable or times out after retries."""
     pass
 
 
@@ -117,7 +123,7 @@ class ConfigClient:
         self.socket_path = socket_path
         self._id = 0
 
-    def _call(self, op, table, data=None, fields=None):
+    def _call(self, op, table, data=None, fields=None, _retries=3):
         self._id += 1
         req = {"id": self._id, "op": op, "table": table}
         if data is not None:
@@ -125,33 +131,43 @@ class ConfigClient:
         if fields is not None:
             req["fields"] = fields
 
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(5)
-            s.connect(self.socket_path)
-            s.sendall(json.dumps(req).encode() + b"\n")
+        last_err = None
+        for attempt in range(_retries):
+            try:
+                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                s.settimeout(5)
+                s.connect(self.socket_path)
+                s.sendall(json.dumps(req).encode() + b"\n")
 
-            resp = b""
-            while True:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                resp += chunk
-                if b"\n" in chunk:
-                    break
-            s.close()
+                resp = b""
+                while True:
+                    chunk = s.recv(4096)
+                    if not chunk:
+                        break
+                    resp += chunk
+                    if b"\n" in chunk:
+                        break
+                s.close()
 
-            parsed = json.loads(resp.decode().strip())
-        except (ConnectionRefusedError, FileNotFoundError) as e:
-            raise ConfigError(f"configd unreachable ({self.socket_path}): {e}")
-        except (socket.timeout, BrokenPipeError) as e:
-            raise ConfigError(f"configd communication error: {e}")
-        except json.JSONDecodeError as e:
-            raise ConfigError(f"configd bad response: {e}")
-
-        if not parsed.get("ok"):
-            raise ConfigError(parsed.get("error", "unknown error"))
-        return parsed.get("data")
+                parsed = json.loads(resp.decode().strip())
+                if not parsed.get("ok"):
+                    raise ConfigError(parsed.get("error", "unknown error"))
+                return parsed.get("data")
+            except (ConnectionRefusedError, FileNotFoundError) as e:
+                raise ConfigError(
+                    f"configd unreachable ({self.socket_path}): {e}"
+                )
+            except (socket.timeout, BrokenPipeError) as e:
+                last_err = e
+                if attempt < _retries - 1:
+                    time.sleep(0.5 * (2 ** attempt))
+                    continue
+                raise ConfigTimeoutError(
+                    f"configd communication error after {_retries} retries: "
+                    f"{e}"
+                ) from e
+            except json.JSONDecodeError as e:
+                raise ConfigError(f"configd bad response: {e}")
 
     def get(self, table, fields=None):
         data = self._call("get", table, fields=fields)
