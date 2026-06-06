@@ -12,144 +12,144 @@ msgstr ""
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"Language: de_DE\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: templates/nab8balld/rfid-data.html:3
 msgid "Language"
-msgstr "Langue"
+msgstr "Sprache"
 
 #: templates/nab8balld/rfid-data.html:6
 msgid "Nabaztag's current language"
-msgstr "Langue du Nabaztag"
+msgstr "Aktuelle Sprache des Nabaztag"
 
 #: templates/nab8balld/rfid-data.html:7
 msgid "French"
-msgstr "Français"
+msgstr "Französisch"
 
 #: templates/nab8balld/rfid-data.html:8
 msgid "German"
-msgstr "Allemand"
+msgstr "Deutsch"
 
 #: templates/nab8balld/rfid-data.html:9
 msgid "U.S. English"
-msgstr "Anglais des États-Unis"
+msgstr "US-Englisch"
 
 #: templates/nab8balld/rfid-data.html:10
 msgid "British English"
-msgstr "Anglais britannique"
+msgstr "Britisches Englisch"
 
 #: templates/nab8balld/rfid-data.html:11
 msgid "Spanish"
-msgstr "Espagnol"
+msgstr "Spanisch"
 
 #: templates/nab8balld/rfid-data.html:12
 msgid "Italian"
-msgstr "Italien"
+msgstr "Italienisch"
 
 #: templates/nab8balld/rfid-data.html:13
 msgid "Japanese"
-msgstr "Japonais"
+msgstr "Japanisch"
 
 #: templates/nab8balld/rfid-data.html:14
 msgid "Brazilian Portuguese"
-msgstr "Portugais brésilien"
+msgstr "Brasilianisches Portugiesisch"
 
 #: templates/nab8balld/settings.html:6
 msgid "Magic 8 Ball"
-msgstr "Gourou"
+msgstr "Magischer 8-Ball"
 
 #: templates/nab8balld/settings.html:10
 msgid "Wake up the guru"
-msgstr "Réveiller le gourou"
+msgstr "Wecke den Guru"
 
 #: templates/nab8balld/settings.html:16
 msgid "To use Magic 8 Ball, think about something you want to "
-msgstr "Pour invoquer le Gourou : réflechissez à ce que vous désirez "
+msgstr "Um den Magic 8 Ball zu benutzen, denke an etwas, das du "
 
 #: templates/nab8balld/settings.html:16
 msgid "Speech recognition"
-msgstr "Reconnaissance vocale"
+msgstr "Spracherkennung"
 
 #: templates/nab8balld/settings.html:16
 msgid "ask to your rabbit"
-msgstr "demander à votre lapin"
+msgstr "deinen Hasen fragen möchtest"
 
 #: templates/nab8balld/settings.html:16
 msgid ""
 ", then click and hold the button, say <q>Tell me rabbit</q> and release the "
 "button for the answer."
 msgstr ""
-", puis maintenez le bouton appuyé, dites <q>T'en penses quoi Nabaztag ?</q>, "
-"relachez et attendez la réponse."
+", halte dann den Knopf gedrückt, sage <q>Tell me "
+"rabbit</q> und lass ihn für die Antwort wieder los."
 
 #: templates/nab8balld/settings.html:21
 msgid "Save"
-msgstr "Enregistrer"
+msgstr "Speichern"
 
 #: templates/nab8balld/settings.html:22
 msgid "Reset"
-msgstr "Annuler"
+msgstr "Zurücksetzen"
 
-# TTS - transcribed from French MP3 audio
+# TTS - transcribed from MP3 audio
 msgid "go for it"
-msgstr "allez, tu devrais tenter l'aventure"
+msgstr "also los geht's"
 
 msgid "but it's so obvious"
-msgstr "mais oui bien sûr"
+msgstr "das ist doch eine ganz klare Sache"
 
 msgid "definitely but have a little fun"
-msgstr "ça va être super"
+msgstr "ja aber bitte nicht übertreiben"
 
 msgid "be sure not to make any waves"
-msgstr "attention aux détails"
+msgstr "achte auf die Details"
 
 msgid "well I wouldn't bet on that"
-msgstr "c'est pas sûr"
+msgstr "darauf würde ich nicht wetten"
 
 msgid "stop wasting time"
-msgstr "dépêche-toi de faire"
+msgstr "du vergeudest deine Zeit"
 
 msgid "don't be ridiculous"
-msgstr "bah oui mais bon ça veut rien dire"
+msgstr "mach dich doch nicht lächerlich, ein bisschen würdevoller bitte"
 
 msgid "haste makes waste"
-msgstr "je pense sans vouloir te commander que tu devrais revoir tes priorités"
+msgstr "zu schnell bringt auch nichts"
 
 msgid "think of it as a long-term investment"
-msgstr "à l'avenir ça sera d'un super grand soutien"
+msgstr "es ist eine Investition auf lange Sicht"
 
 msgid "change your approach"
-msgstr "comment dire, change d'objectif"
+msgstr "mach was anderes"
 
 msgid "take a step back and see what awaits you"
-msgstr "après ça tu verras les choses différemment"
+msgstr "beobachte, dann wirst du sehen was auf dich zukommt"
 
 msgid "avoid getting all happy"
-msgstr "hola ne t'emballe pas, c'est pas certain encore"
+msgstr "immer mit der Ruhe, es ist noch nichts entschieden"
 
 msgid "prepare yourself for a few nasty repercussions"
-msgstr "il faudra que tu surmontes quelques obstacles"
+msgstr "du musst einige Hürden überwinden"
 
 msgid "not just yet wait a little"
-msgstr "attends une meilleure proposition"
+msgstr "warte auf einen besseren Vorschlag"
 
 msgid "yes"
-msgstr "ce serait merveilleux"
+msgstr "na klar"
 
 msgid "no"
-msgstr "désolé mais on dit que c'est pas pour tout de suite"
+msgstr "nein so geht das nicht, du nimmst es auf die leichte Schulter"
 
 msgid "yes or maybe no"
-msgstr "alors peut-être que tu devrais chercher d'autres options"
+msgstr "ja oder besser nein"
 
 msgid "that's for sure"
-msgstr "ça c'est sûr à 100 %"
+msgstr "na das steht fest"
 
 msgid "never"
-msgstr "jamais tu m'entends"
+msgstr "niemals, hörst du"
 
 msgid "indubitably"
-msgstr "incontestablement"
+msgstr "ohne jeden Zweifel"
