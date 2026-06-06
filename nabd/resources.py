@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 from pathlib import Path
@@ -37,7 +38,9 @@ class Resources(object):
             else:
                 result = await Resources._find_file(type, filename)
             if result is not None:
+                logging.debug("find: found %s -> %s", filename, result)
                 return result
+        logging.debug("find: not found: %s", resources)
         return None
 
     @staticmethod
@@ -77,5 +80,7 @@ class Resources(object):
                 if path.is_dir():
                     filelist = filelist + list(path.glob(pattern))
         if filelist != []:
+            logging.debug("_find_random: found %d files for %s/%s", len(filelist), parent, pattern)
             return random.choice(sorted(filelist))  # nosec B311
+        logging.debug("_find_random: no files for %s/%s", parent, pattern)
         return None

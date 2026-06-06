@@ -43,6 +43,7 @@ class NabRadio(NabService):
         await self.writer.drain()
 
     async def _stop_radio(self):
+        logging.info("nabradio: stopping radio")
         packet = '{"type":"cancel","request_id":"nabradio"}\r\n'
         self.writer.write(packet.encode("utf8"))
         await self.writer.drain()
@@ -54,6 +55,7 @@ class NabRadio(NabService):
             and packet["event"] == "detected"
         ):
             streaming_url = await rfid_data.read_data_ui(packet["uid"])
+            logging.info("nabradio: RFID trigger, url=%s", streaming_url)
             await self._launch_radio(streaming_url)
 
 

@@ -29,6 +29,7 @@ class NabWebhook(NabService):
             and packet["app"] == "nabwebhook"
             and packet["event"] == "detected"
         ):
+            logging.info("nabwebhook: RFID trigger, uid=%s", packet.get("uid", "?"))
             webhook_url = await rfid_data.read_data_ui(packet["uid"])
             await self._call_webhook(webhook_url)
 

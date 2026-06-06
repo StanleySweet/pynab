@@ -1,4 +1,5 @@
 import datetime
+import logging
 import random
 import sys
 
@@ -13,6 +14,7 @@ class NabTaichid(NabRandomService):
     def __init__(self):
         super().__init__(configd=True)
         self.client = ConfigClient()
+        logging.info("nabtaichid: startup complete")
 
     async def get_config(self):
         config = await self.client.get_async("nabtaichid")
@@ -24,6 +26,7 @@ class NabTaichid(NabRandomService):
         )
 
     async def perform(self, expiration, args, config):
+        logging.info("nabtaichid: performing tai chi")
         packet = (
             '{"type":"command",'
             '"sequence":[{"choreography":"nabtaichid/taichi.chor"}],'
@@ -40,6 +43,7 @@ class NabTaichid(NabRandomService):
             packet["type"] == "asr_event"
             and packet["nlu"]["intent"] == "nabtaichid/taichi"
         ):
+            logging.info("nabtaichid: ASR trigger")
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=1)
             await self.perform(expiration, None, None)
@@ -48,6 +52,7 @@ class NabTaichid(NabRandomService):
             and packet["app"] == "nabtaichid"
             and packet["event"] == "detected"
         ):
+            logging.info("nabtaichid: RFID trigger")
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=1)
             await self.perform(expiration, None, None)

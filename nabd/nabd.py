@@ -342,6 +342,7 @@ class Nabd:
         Thread: idle loop (only called from process_idle_item)
         """
         if new_state != self.state:
+            logging.info("nabd: state %s -> %s", self.state.value, new_state.value)
             if new_state == State.IDLE:
                 await self._do_transition_to_idle()
             if new_state == State.ASLEEP:
@@ -355,6 +356,7 @@ class Nabd:
         """
         async with self.idle_cv:
             if self.state != new_state:
+                logging.info("nabd: state %s -> %s (transition_to)", self.state.value, new_state.value)
                 self.state = new_state
                 if new_state == State.IDLE:
                     await self._do_transition_to_idle()
@@ -917,15 +919,15 @@ class Nabd:
 
     def broadcast_event(self, event_type, response: EventPacket):
         if self.interactive_service_writer is None:
-            logging.debug(f"broadcast event: {event_type}, {response}")
+            logging.info(f"broadcast event: {event_type}")
             for sw, events in self.service_writers.items():
                 if self._test_event_mask(event_type, events):
                     self.write_packet(response, sw)
         elif self._test_event_mask(
             event_type, self.interactive_service_events
         ):
-            logging.debug(
-                f"send event to interactive service: {event_type}, {response}"
+            logging.info(
+                f"send event to interactive service: {event_type}"
             )
             self.write_packet(response, self.interactive_service_writer)
 
@@ -979,6 +981,7 @@ class Nabd:
     ):
         self.write_state_packet(writer)
         self.service_writers[writer] = []
+        logging.info("nabd: service connected, state=%s", self.state.value)
         try:
             while not reader.at_eof():
                 line = await reader.readline()
@@ -1023,6 +1026,7 @@ class Nabd:
         except Exception:
             logging.debug(traceback.format_exc())
         finally:
+            logging.info("nabd: service disconnected")
             del self.service_writers[writer]
             if self.interactive_service_writer == writer:
                 await self.exit_interactive()

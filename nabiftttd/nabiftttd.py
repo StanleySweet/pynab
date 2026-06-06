@@ -21,18 +21,23 @@ class NabIftttd(NabService):
     async def _call_ifttt(self, event_name, uid):
         config = await self.client.get_async("nabiftttd")
 
+        key = config.get("ifttt_key", "")
         ifttt_url = (
             "https://maker.ifttt.com/trigger/"
             + event_name
             + "/with/key/"
-            + config.get("ifttt_key", "")
+            + key
             + "?value1="
             + uid
             + "&value2=❤️&value3=🐇"
         )
-        logging.info("Calling IFTTT " + ifttt_url)
-        result = requests.get(ifttt_url, timeout=10)
-        print(result.text)
+        redacted = ifttt_url.replace(key, "***") if key else ifttt_url
+        logging.info("Calling IFTTT " + redacted)
+        try:
+            result = requests.get(ifttt_url, timeout=10)
+            logging.info("IFTTT response: %s", result.reason)
+        except Exception as e:
+            logging.error("IFTTT error: %s", e)
 
     async def process_nabd_packet(self, packet):
         if (

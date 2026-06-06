@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import sys
 
 from django.utils.translation import gettext as _, override, to_language
@@ -18,6 +19,7 @@ class Nab8Balld(NabService):
         self._interactive = False
         self._timeout_task = None
         self.client = ConfigClient()
+        logging.info("nab8balld: startup complete")
 
     async def __config(self):
         return await self.client.get_async("nab8balld")
@@ -43,6 +45,7 @@ class Nab8Balld(NabService):
         self.writer.write(packet.encode("utf8"))
 
     async def perform(self, lang):
+        logging.info("nab8balld: performing answer, lang=%s", lang)
         config = await self.__config()
         if config.get("use_tts"):
             if lang and lang != "default":
@@ -79,16 +82,19 @@ class Nab8Balld(NabService):
     async def process_button_event_packet(self, packet):
         if not self._interactive:
             if packet["event"] == "click_and_hold":
+                logging.info("nab8balld: button click_and_hold, entering interactive")
                 await self.enter_interactive()
                 self._timeout_task = asyncio.ensure_future(self.timeout_job())
         else:
             if packet["event"] == "up":
+                logging.info("nab8balld: button up, exiting interactive")
                 if self._timeout_task:
                     self._timeout_task.cancel()
                     self._timeout_task = None
                 await self.exit_interactive()
 
     async def enter_interactive(self):
+        logging.info("nab8balld: entering interactive mode")
         packet = (
             '{"type":"mode","mode":"interactive",'
             '"events":["button"],'
@@ -98,6 +104,7 @@ class Nab8Balld(NabService):
         await self.writer.drain()
 
     async def entered_interactive(self):
+        logging.info("nab8balld: interactive mode confirmed")
         self._interactive = True
         resp = (
             '{"type":"command",'
@@ -111,6 +118,7 @@ class Nab8Balld(NabService):
         await self.writer.drain()
 
     async def exit_interactive(self):
+        logging.info("nab8balld: exiting interactive mode")
         packet = (
             '{"type":"command",'
             '"sequence":[{"audio":["nab8balld/acquired.mp3"]}],'
@@ -122,6 +130,7 @@ class Nab8Balld(NabService):
         await self.setup_listener()
 
     async def timeout_job(self):
+        logging.info("nab8balld: interactive timeout")
         await asyncio.sleep(10)
         self._timeout_task = None
         self.exit_interactive()
@@ -135,6 +144,7 @@ class Nab8Balld(NabService):
 
     async def process_asr_event_packet(self, packet):
         if packet["nlu"]["intent"] == "nab8balld/8ball":
+            logging.info("nab8balld: ASR trigger")
             await self.perform(None)
 
     async def process_rfid_event_packet(self, packet):
@@ -143,6 +153,7 @@ class Nab8Balld(NabService):
                 lang = rfid_data.unserialize(packet["data"].encode("utf8"))
             else:
                 lang = "default"
+            logging.info("nab8balld: RFID trigger, lang=%s", lang)
             await self.perform(lang)
 
     def run(self):

@@ -71,7 +71,7 @@ class Sound(object, metaclass=abc.ABCMeta):
                             "TTS preload: unexpected response %s", meta
                         )
                         return None
-                    logging.info("TTS preload: got start, sample_rate=%s", meta.get("sample_rate"))
+                    logging.info("TTS speech started, sample_rate=%s", meta.get("sample_rate"))
                     frames = []
                     while True:
                         msg = await ws.recv()
@@ -100,7 +100,7 @@ class Sound(object, metaclass=abc.ABCMeta):
             tts_path = await loop.run_in_executor(
                 None, self._decode_opus_to_wav, frames
             )
-            logging.info("TTS preload: WAV ready at %s", tts_path)
+            logging.info("TTS speech finished, WAV at %s", tts_path)
             return tts_path
         logging.debug("preload: %s", audio_resource)
         if audio_resource.startswith("https://") or audio_resource.startswith(

@@ -132,7 +132,7 @@ class NabTtsd(NabService):
                 if meta.get("type") != "start":
                     logging.error(f"nabttsd: unexpected response: {meta}")
                     return
-                logging.info("nabttsd: got start")
+                logging.info("nabttsd: speech started")
                 frames = []
                 while True:
                     msg = await ws.recv()
@@ -153,6 +153,7 @@ class NabTtsd(NabService):
                 await loop.run_in_executor(
                     None, self._decode_and_play, frames
                 )
+                logging.info("nabttsd: speech finished")
         except Exception as e:
             logging.error(f"nabttsd: websocket error: {e}")
 

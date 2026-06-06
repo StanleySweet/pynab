@@ -407,6 +407,8 @@ class NabRecurrentService(NabService, ABC):
             next_date, next_args = next_t
         if next_date != saved_date or next_args != saved_args:
             await self.update_next(next_date, next_args)
+        service_name = self.__class__.__name__.lower()
+        logging.info("%s: config loaded, next_date=%s", service_name, next_date)
         return next_date, next_args, config
 
 

@@ -1,4 +1,5 @@
 import datetime
+import logging
 import random
 import sys
 
@@ -30,6 +31,7 @@ class NabSurprised(NabRandomService):
     def __init__(self):
         super().__init__(configd=True, translations=True)
         self.client = ConfigClient()
+        logging.info("nabsurprised: startup complete")
 
     async def get_config(self):
         cfg = await self.client.get_dict_async("nabsurprised")
@@ -42,6 +44,7 @@ class NabSurprised(NabRandomService):
         await self._do_perform(expiration, None, None)
 
     async def _do_perform(self, expiration, lang, type):
+        logging.info("nabsurprised: performing surprise, type=%s", type)
         cfg = await self.client.get_async("nabsurprised")
         if cfg.get("use_tts"):
             if lang and lang != "default":
@@ -104,6 +107,7 @@ class NabSurprised(NabRandomService):
         if packet["type"] == "asr_event":
             intent = packet["nlu"]["intent"]
             if intent in NabSurprised.NLU_INTENTS:
+                logging.info("nabsurprised: ASR trigger, intent=%s", intent)
                 _, type = intent.split("/")
                 await self._do_perform(None, None, type)
         elif (
@@ -118,6 +122,7 @@ class NabSurprised(NabRandomService):
             else:
                 lang = "default"
                 type = "surprise"
+            logging.info("nabsurprised: RFID trigger, type=%s, lang=%s", type, lang)
             await self._do_perform(None, lang, type)
 
 

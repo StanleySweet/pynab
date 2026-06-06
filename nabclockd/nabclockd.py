@@ -70,6 +70,7 @@ class NabClockd(nabservice.NabService):
         return False
 
     async def chime(self, hour: int) -> None:
+        logging.info("nabclockd: chime hour=%d", hour)
         now = datetime.datetime.now()
         expiration = now + datetime.timedelta(minutes=3)
         if self.config["use_tts"]:
@@ -184,6 +185,7 @@ class NabClockd(nabservice.NabService):
                                     {"sleep_wakeup_override": None},
                                 )
                             elif r == "sleep":
+                                logging.info("nabclockd: sleep scheduled")
                                 # Check if we need to play the sleep sound
                                 if (
                                     self.config["play_wakeup_sleep_sounds"]
@@ -219,6 +221,7 @@ class NabClockd(nabservice.NabService):
                                 self.asleep = None
 
                             elif r == "wakeup":
+                                logging.info("nabclockd: wakeup scheduled")
                                 # Check if we need to play the wakeup sound
                                 if self.config["play_wakeup_sleep_sounds"]:
                                     # We dont want the next idle packet
@@ -292,6 +295,7 @@ class NabClockd(nabservice.NabService):
                 type = rfid_data.unserialize(packet["data"].encode("utf8"))
             else:
                 type = "sleep"
+            logging.info("nabclockd: RFID trigger, type=%s", type)
             async with self.loop_cv:
                 await self.client.set_async(
                     "nabclockd",
@@ -304,6 +308,7 @@ class NabClockd(nabservice.NabService):
             and "intent" in packet["nlu"]
         ):
             if packet["nlu"]["intent"] == "nabclockd/sleep":
+                logging.info("nabclockd: ASR sleep trigger")
                 async with self.loop_cv:
                     await self.client.set_async(
                         "nabclockd",
@@ -311,6 +316,7 @@ class NabClockd(nabservice.NabService):
                     )
                     self.loop_cv.notify()
             elif packet["nlu"]["intent"] == "nabclockd/clock":
+                logging.info("nabclockd: ASR clock trigger")
                 now = datetime.datetime.now()
                 if now.minute < 55:
                     hour = now.hour
@@ -318,6 +324,7 @@ class NabClockd(nabservice.NabService):
                     hour = (now.hour + 1) % 24
                 await self.chime(hour)
         elif packet["type"] == "button_event" and packet["event"] == "click":
+            logging.info("nabclockd: button click wakeup")
             async with self.loop_cv:
                 await self.client.set_async(
                     "nabclockd",
