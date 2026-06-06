@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import json
 import logging
 import sys
 
@@ -70,7 +69,7 @@ class NabAirqualityd(NabInfoCachedService):
 
     async def get_config(self):
         weather_config = await self.client.get_async("nabweatherd")
-        location = json.loads(weather_config["location"])
+        location = weather_config["location"]
         latitude = str(location["lat"])
         longitude = str(location["lon"])
 
