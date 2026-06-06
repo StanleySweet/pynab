@@ -1,16 +1,6 @@
-from django.db import models
-
-from nabcommon import singleton_model
-
-
-class Config(singleton_model.SingletonModel):
-
-    locale = models.TextField(default="fr_FR")
-
-    class Meta:
-        app_label = "nabd"
+from nabcommon.config_client import ConfigClient
 
 
 async def get_locale():
-    config = await Config.load_async()
-    return config.locale
+    config = ConfigClient().get("nabd")
+    return config.get("locale", "fr_FR")

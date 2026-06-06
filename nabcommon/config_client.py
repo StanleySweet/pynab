@@ -55,6 +55,9 @@ _DATETIME_FIELDS = {
     "nab8balld": set(),
     "nabttsd": set(),
     "nabd": set(),
+    "nabtaichid": {"next_taichi"},
+    "nabradio": {"next_radio_date"},
+    "nabmqttd": set(),
 }
 
 
