@@ -19,7 +19,7 @@ from django.views.generic import View
 
 from nabcommon import hardware
 from nabcommon.nabservice import NabService
-from nabd.i18n import Config
+from nabcommon.config_client import ConfigClient
 
 
 class NabdConnection:
@@ -68,14 +68,14 @@ class BaseView(View, metaclass=abc.ABCMeta):
                 return {"status": "ok", "result": packet}
 
     def get_locales(self):
-        config = Config.load()
+        config = ConfigClient().get("nabd")
         return [
-            (to_locale(lang), name, to_locale(lang) == config.locale)
+            (to_locale(lang), name, to_locale(lang) == config.get("locale", "fr_FR"))
             for (lang, name) in settings.LANGUAGES
         ]
 
     def get_context(self):
-        user_locale = Config.load().locale
+        user_locale = ConfigClient().get("nabd").get("locale", "fr_FR")
         locales = self.get_locales()
         return {"current_locale": user_locale, "locales": locales}
 
@@ -116,11 +116,9 @@ class NabWebView(BaseView):
 
     def post(self, request, *args, **kwargs):
         if "locale" in request.POST:
-            config = Config.load()
-            config.locale = request.POST["locale"]
-            config.save()
+            ConfigClient().set("nabd", {"locale": request.POST["locale"]})
             asyncio.run(self.notify_config_update("nabd", "locale"))
-            user_language = to_language(config.locale)
+            user_language = to_language(request.POST["locale"])
             translation.activate(user_language)
             request.LANGUAGE_CODE = translation.get_language()
         context = self.get_context()

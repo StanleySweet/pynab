@@ -80,12 +80,21 @@ class AttrDict(dict):
         self._json_fields = _JSON_FIELDS.get(table, set())
         self._dt_fields = _DATETIME_FIELDS.get(table, set())
 
+    def __getitem__(self, key):
+        return self._convert(key, super().__getitem__(key))
+
+    def get(self, key, default=None):
+        if key in self:
+            return self[key]
+        return default
+
     def __getattr__(self, name):
         if name.startswith("_"):
             raise AttributeError(name)
-        if name in self:
-            return self._convert(name, self[name])
-        raise AttributeError(name)
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
@@ -177,11 +186,11 @@ class ConfigClient:
 
     async def get_async(self, table, fields=None):
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.get, table, fields)
+        data = await loop.run_in_executor(None, self.get, table, fields)
+        return AttrDict(table, data)
 
     async def get_dict_async(self, table, fields=None):
-        data = await self.get_async(table, fields=fields)
-        return AttrDict(table, data)
+        return await self.get_async(table, fields=fields)
 
     async def set_async(self, table, data):
         loop = asyncio.get_event_loop()
