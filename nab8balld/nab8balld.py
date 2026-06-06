@@ -1,9 +1,11 @@
 import asyncio
+import json
 import logging
+import os
 import random
 import sys
 
-from django.utils.translation import gettext as _, override, to_language
+from django.utils.translation import gettext as _
 
 from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabService
@@ -12,28 +14,15 @@ from nabcommon.typing import NabdPacket
 from . import rfid_data
 
 
-ANSWERS = [
-    "It is certain.",
-    "It is decidedly so.",
-    "Without a doubt.",
-    "Yes, definitely.",
-    "You may rely on it.",
-    "As I see it, yes.",
-    "Most likely.",
-    "Outlook good.",
-    "Yes.",
-    "Signs point to yes.",
-    "Reply hazy, try again.",
-    "Ask again later.",
-    "Better not tell you now.",
-    "Cannot predict now.",
-    "Concentrate and ask again.",
-    "Don't count on it.",
-    "My reply is no.",
-    "My sources say no.",
-    "Outlook not so good.",
-    "Very doubtful.",
-]
+def _load_answers():
+    path = os.path.join(os.path.dirname(__file__), "answers_text.json")
+    if os.path.exists(path):
+        with open(path) as f:
+            data = json.load(f)
+            logging.info("nab8balld: loaded %d locales from answers_text.json", len(data))
+            return data
+    logging.warning("nab8balld: answers_text.json not found, MP3 fallback only")
+    return {}
 
 
 class Nab8Balld(NabService):
@@ -44,6 +33,7 @@ class Nab8Balld(NabService):
         self._interactive = False
         self._timeout_task = None
         self.client = ConfigClient()
+        self._answers = _load_answers()
         logging.info("nab8balld: startup complete")
 
     async def __config(self):
@@ -73,12 +63,13 @@ class Nab8Balld(NabService):
         logging.info("nab8balld: performing answer, lang=%s", lang)
         config = await self.__config()
         if config.get("use_tts"):
-            answer = random.choice(ANSWERS)
-            if lang and lang != "default":
-                with override(to_language(lang)):
-                    text = _(answer)
+            locale = lang if lang and lang != "default" else "fr_FR"
+            entries = self._answers.get(locale, {})
+            if entries:
+                key = random.choice(list(entries.keys()))
+                text = entries[key]
             else:
-                text = _(answer)
+                text = _("I have an answer for you.")
             path = f"tts:{text}"
         else:
             if lang is None or lang == "default":
