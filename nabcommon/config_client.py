@@ -64,6 +64,17 @@ _DATETIME_FIELDS = {
 def _parse_iso_datetime(s):
     if s.endswith("Z"):
         s = s[:-1] + "+00:00"
+    if "." in s:
+        before, after_tz = s.split(".", 1)
+        frac = ""
+        tz = ""
+        for i, ch in enumerate(after_tz):
+            if ch in ("+", "-"):
+                tz = after_tz[i:]
+                break
+            frac += ch
+        frac = frac.ljust(6, "0")[:6]
+        s = f"{before}.{frac}{tz}"
     return datetime.datetime.fromisoformat(s)
 
 
