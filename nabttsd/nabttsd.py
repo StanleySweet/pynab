@@ -90,9 +90,15 @@ class NabTtsd(NabService):
             processors = {
                 "asr_event": self.process_asr_event_packet,
                 "rfid_event": self.process_rfid_event_packet,
+                "config-update": self.process_config_update_packet,
             }
             if packet["type"] in processors:
                 await processors[packet["type"]](packet)
+
+    async def process_config_update_packet(self, packet):
+        if packet.get("service") == "nabttsd":
+            logging.info("nabttsd: config updated via configd")
+            # Next speak() call will pick up the new values from configd
 
     async def process_asr_event_packet(self, packet):
         intent = packet.get("nlu", {}).get("intent", "")

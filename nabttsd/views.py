@@ -1,8 +1,12 @@
+import asyncio
 import json
 
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.generic import TemplateView
+
+from nabcommon.config_client import ConfigClient
+from nabcommon.nabservice import NabService
 
 from .models import Config
 from .nabttsd import NabTtsd
@@ -28,9 +32,34 @@ class SettingsView(TemplateView):
         except ValueError:
             config.length_scale = 1.5
         config.save()
-        NabTtsd.signal_daemon()
+        # Sync to configd so the daemon picks up changes
+        ConfigClient().set("nabttsd", {
+            "enabled": config.enabled,
+            "engine": config.engine,
+            "voice": config.voice,
+            "tts_addr": config.tts_addr,
+            "length_scale": config.length_scale,
+        })
+        asyncio.run(self._notify_config_update("nabttsd"))
         context = self.get_context_data(**kwargs)
         return render(request, self.template_name, context=context)
+
+    async def _notify_config_update(self, service):
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(
+                    NabService.HOST, NabService.PORT_NUMBER
+                ),
+                0.5,
+            )
+            packet = (
+                f'{{"type":"config-update","service":"{service}"}}\r\n'
+            )
+            writer.write(packet.encode("utf-8"))
+            await writer.drain()
+            writer.close()
+        except Exception:
+            pass
 
     def put(self, request, *args, **kwargs):
         data = json.loads(request.body)
