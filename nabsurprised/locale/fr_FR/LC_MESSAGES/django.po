@@ -126,15 +126,3 @@ msgstr "Annuler"
 # TTS
 msgid "Surprise!"
 msgstr "Surprise !"
-
-msgid "Carrot!"
-msgstr "Une carotte !"
-
-msgid "Listen to what I can do!"
-msgstr "Écoute ce que je sais faire !"
-
-msgid "Happy Birthday!"
-msgstr "Joyeux anniversaire !"
-
-msgid "Happy Valentine's Day!"
-msgstr "Joyeuse Saint-Valentin !"
