@@ -72,6 +72,9 @@ def _parse_hex_color(value):
         return (255, 255, 255)
 
 
+IdleQueueItem = Tuple[ServicePacket, asyncio.StreamWriter]
+
+
 class Nabd:
     SLEEP_EAR_POSITION = 10
     INIT_EAR_POSITION = 0
