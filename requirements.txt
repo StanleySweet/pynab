@@ -99,7 +99,7 @@ identify==2.4.11
 cfgv==3.3.1
 Cython==0.29.30
 # numpy<1.24: np.float was removed in 1.24, required by scikit-learn==0.24.2 / snips-nlu
-numpy==1.21.4
+numpy==1.23.5
 # Latest scipy compatible with snips-nlu
 scipy==1.6.2
 num2words==0.5.10
