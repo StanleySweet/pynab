@@ -38,11 +38,14 @@ def _get_libopus():
 class Sound(object, metaclass=abc.ABCMeta):
     """Interface for sound"""
 
-    async def _tts_addr(self):
+    async def _tts_config(self):
         from nabcommon.config_client import ConfigClient
         client = ConfigClient()
         cfg = await client.get_async("nabttsd")
-        return cfg.get("tts_addr", "pi4.local:8765")
+        return (
+            cfg.get("tts_addr", "pi4.local:8765"),
+            cfg.get("length_scale", 1.5),
+        )
 
     async def preload(self, audio_resource):
         if audio_resource.startswith("tts:"):
@@ -51,7 +54,7 @@ class Sound(object, metaclass=abc.ABCMeta):
             if not text:
                 logging.warning("TTS preload: empty text")
                 return None
-            addr = await self._tts_addr()
+            addr, length_scale = await self._tts_config()
             uri = f"ws://{addr}/ws"
             logging.info("TTS preload: connecting to %s", uri)
             try:
@@ -61,6 +64,7 @@ class Sound(object, metaclass=abc.ABCMeta):
                             "text": text,
                             "engine": "piper",
                             "voice": "default",
+                            "length_scale": length_scale,
                         }
                     )
                     await ws.send(req)

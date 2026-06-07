@@ -34,6 +34,13 @@
           <input id="ttsAddrInput" name="tts_addr" type="text" class="form-control" value="{{ config.tts_addr }}" />
         </div>
       </div>
+      <div class="form-group row">
+        <label for="lengthScaleInput" class="col-6 col-form-label">{% trans "Speech speed" %}</label>
+        <div class="col-6">
+          <input id="lengthScaleInput" name="length_scale" type="number" step="0.1" min="0.5" max="3.0" class="form-control" value="{{ config.length_scale }}" />
+          <small class="form-text text-muted">{% trans "Higher values = slower speech (default 1.5)" %}</small>
+        </div>
+      </div>
     </div>
     <div class="card-footer">
       <div class="row mb-2">

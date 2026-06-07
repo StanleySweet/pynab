@@ -8,6 +8,7 @@ class Config(singleton_model.SingletonModel):
     engine = models.CharField(default="piper", max_length=32)
     voice = models.CharField(default="fr_FR-upmc-medium", max_length=128)
     tts_addr = models.CharField(default="pi4.local:8765", max_length=256)
+    length_scale = models.FloatField(default=1.5)
 
     class Meta:
         app_label = "nabttsd"

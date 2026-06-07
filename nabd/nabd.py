@@ -63,35 +63,13 @@ from .rfid import (
 _PYTEST = os.path.basename(sys.argv[0]) != "nabd.py"
 
 
-IdleQueueItem = Tuple[ServicePacket, asyncio.StreamWriter]
-
-STATUS_EXPIRED = cast(ResponseExpiredPacketProto, {"status": "expired"})
-STATUS_OK = cast(ResponseOKPacketProto, {"status": "ok"})
-STATUS_CANCELED = cast(ResponseOKPacketProto, {"status": "canceled"})
-STATUS_FAILURE = cast(ResponseFailurePacketProto, {"status": "failure"})
-
-
-def status_error(
-    error_class: str, error_message: str
-) -> ResponseErrorPacketProto:
-    return cast(
-        ResponseErrorPacketProto,
-        {"status": "error", "class": error_class, "message": error_message},
-    )
-
-
-def status_error_malformed_packet(
-    error_message: str,
-) -> ResponseErrorPacketProto:
-    return status_error("MalformedPacket", error_message)
-
-
-class State(Enum):
-    IDLE = "idle"
-    ASLEEP = "asleep"
-    INTERACTIVE = "interactive"
-    PLAYING = "playing"
-    RECORDING = "recording"
+def _parse_hex_color(value):
+    """Parse '#00FFFF' into (0, 255, 255), default to white on error."""
+    try:
+        h = value.lstrip("#")
+        return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))
+    except Exception:
+        return (255, 255, 255)
 
 
 class Nabd:
@@ -143,6 +121,10 @@ class Nabd:
         else:
             self.asr = None
             self.nlu = None
+        config = self.client.get("nabd")
+        self._bottom_led_rgb = _parse_hex_color(
+            config.get("bottom_led_color", "#00FFFF")
+        )
 
     async def reload_config(self):
         """
@@ -171,7 +153,11 @@ class Nabd:
                 self.nlu = NLU(self._nlu_locale)
                 Nabd.leds_boot(self.nabio, 4)
             self.nabio.set_leds(None, None, None, None, None)
-        self.nabio.pulse(Led.BOTTOM, (0, 255, 255))  # Cyan
+        config = await self.client.get_async("nabd")
+        self._bottom_led_rgb = _parse_hex_color(
+            config.get("bottom_led_color", "#00FFFF")
+        )
+        self.nabio.pulse(Led.BOTTOM, self._bottom_led_rgb)
 
     async def _do_transition_to_idle(self):
         """
@@ -180,8 +166,8 @@ class Nabd:
         Thread: service or idle_worker_loop
         """
         left, right = self.ears["left"], self.ears["right"]
-        await self.nabio.move_ears_with_leds((0, 255, 255), left, right)
-        self.nabio.pulse(Led.BOTTOM, (0, 255, 255))  # Cyan
+        await self.nabio.move_ears_with_leds(self._bottom_led_rgb, left, right)
+        self.nabio.pulse(Led.BOTTOM, self._bottom_led_rgb)
         if network.ip_address(self.nabio.network_interface()) is None:
             # not even a local network connection: real bad
             logging.error("no network connection")
@@ -717,9 +703,8 @@ class Nabd:
             )
         else:
             if packet["service"] == "nabd":
-                if "slot" in packet and packet["slot"] == "locale":
-                    await self.reload_config()
-                    self.write_response_packet(packet, STATUS_OK, writer)
+                await self.reload_config()
+                self.write_response_packet(packet, STATUS_OK, writer)
 
     async def process_test_packet(
         self, any_packet: AnyPacket, writer: asyncio.StreamWriter

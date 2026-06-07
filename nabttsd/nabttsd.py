@@ -114,7 +114,7 @@ class NabTtsd(NabService):
                     self.speak(text, config.get("engine"), config.get("voice"))
                 )
 
-    async def _speak(self, text, engine, voice, addr):
+    async def _speak(self, text, engine, voice, addr, length_scale=1.5):
         uri = f"ws://{addr}/ws"
         logging.info("nabttsd: connecting to %s", uri)
         try:
@@ -124,6 +124,7 @@ class NabTtsd(NabService):
                         "text": text,
                         "engine": engine,
                         "voice": voice,
+                        "length_scale": length_scale,
                     }
                 )
                 await ws.send(req)
@@ -165,7 +166,8 @@ class NabTtsd(NabService):
         try:
             config = await self.__config()
             addr = config.get("tts_addr")
-            await self._speak(text, engine, voice, addr)
+            length_scale = config.get("length_scale", 1.5)
+            await self._speak(text, engine, voice, addr, length_scale)
         except Exception as e:
             logging.error(f"nabttsd: speak error: {e}")
         finally:
