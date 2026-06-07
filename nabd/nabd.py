@@ -183,7 +183,8 @@ class Nabd:
         self._bottom_led_rgb = _parse_hex_color(
             config.get("bottom_led_color", "#00FFFF")
         )
-        self.nabio.pulse(Led.BOTTOM, self._bottom_led_rgb)
+        if self.state == State.IDLE:
+            self.nabio.pulse(Led.BOTTOM, self._bottom_led_rgb)
 
     async def _do_transition_to_idle(self):
         """
