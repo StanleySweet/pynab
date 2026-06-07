@@ -74,6 +74,29 @@ def _parse_hex_color(value):
 
 IdleQueueItem = Tuple[ServicePacket, asyncio.StreamWriter]
 
+STATUS_EXPIRED = cast(ResponseExpiredPacketProto, {"status": "expired"})
+STATUS_OK = cast(ResponseOKPacketProto, {"status": "ok"})
+STATUS_CANCELED = cast(ResponseOKPacketProto, {"status": "canceled"})
+STATUS_FAILURE = cast(ResponseFailurePacketProto, {"status": "failure"})
+
+
+def status_error(error_type: str, error_message: str) -> ResponseErrorPacketProto:
+    return {"status": "error", "type": error_type, "message": error_message}
+
+
+def status_error_malformed_packet(
+    error_message: str,
+) -> ResponseErrorPacketProto:
+    return status_error("MalformedPacket", error_message)
+
+
+class State(Enum):
+    IDLE = "idle"
+    ASLEEP = "asleep"
+    INTERACTIVE = "interactive"
+    PLAYING = "playing"
+    RECORDING = "recording"
+
 
 class Nabd:
     SLEEP_EAR_POSITION = 10
