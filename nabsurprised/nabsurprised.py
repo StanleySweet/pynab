@@ -43,15 +43,24 @@ class NabSurprised(NabRandomService):
     async def perform(self, expiration, args, config):
         await self._do_perform(expiration, None, None)
 
+    _TTS_MSGIDS = {
+        "surprise": "Surprise!",
+        "carrot": "Carrot!",
+        "autopromo": "Listen to what I can do!",
+        "birthday": "Happy Birthday!",
+        "02-14": "Happy Valentine's Day!",
+    }
+
     async def _do_perform(self, expiration, lang, type):
         logging.info("nabsurprised: performing surprise, type=%s", type)
         cfg = await self.client.get_async("nabsurprised")
         if cfg.get("use_tts"):
+            msgid = NabSurprised._TTS_MSGIDS.get(type, "Surprise!")
             if lang and lang != "default":
                 with override(to_language(lang)):
-                    text = _("Surprise!")
+                    text = _(msgid)
             else:
-                text = _("Surprise!")
+                text = _(msgid)
             path = f"tts:{text}"
         else:
             if lang is None or lang == "default":
