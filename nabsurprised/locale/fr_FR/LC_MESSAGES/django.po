@@ -126,3 +126,115 @@ msgstr "Annuler"
 # TTS
 msgid "Surprise!"
 msgstr "Surprise !"
+#: tts
+msgid "SURPRISE_surprise_0"
+msgstr "Surprise !"
+
+#: tts
+msgid "SURPRISE_carrot_0"
+msgstr "Qui vient de parler de carottes ?"
+
+#: tts
+msgid "SURPRISE_carrot_1"
+msgstr "Qui vient de parler de carottes ? Si vous croyez que j'aime ça, vous vous trompez complètement. Moi ce que j'aime, c'est les puces électroniques et la choucroune. Alors..."
+
+#: tts
+msgid "SURPRISE_birthday_0"
+msgstr "Joyeux anniversaire ! Joyeux anniversaire ! Joyeux anniversaire ! Joyeux anniversaire ! Youpi !"
+
+#: tts
+msgid "SURPRISE_autopromo_0"
+msgstr "Ah tiens, bonjour ! Vous êtes sûr que vous voulez savoir ce que je sais faire ? Oh bah, plein de choses, comme tout le monde !"
+
+#: tts
+msgid "SURPRISE_autopromo_1"
+msgstr "Ah, ce que je sais faire ? Ouf, pas grand-chose. Enfin si, plein de trucs, mais qui ne servent à rien. Mais je suis hyper sympa. En fait, le plus simple pour savoir ce que je sais faire, je crois que c'est de m'adopter."
+
+#: tts
+msgid "SURPRISE_autopromo_2"
+msgstr "Ce que je sais faire ? Attends, laisse-moi réfléchir. Coudre ? Non, ça je sais pas. Je lave pas la vaisselle non plus, ça c'est sûr. Non mais sinon, je sais lire, chanter, lire l'heure. Et je connais deux, trois blagues, à ne pas piquer des hannetons. Enfin, on peut dire que je suis un compagnon idéal."
+
+#: tts
+msgid "SURPRISE_autopromo_3"
+msgstr "Ah bah, je pourrais bien vous expliquer ce que je sais faire, mais comme on me rajoute sans cesse de nouveaux services, et surtout parce que mes possibilités sont aussi étendues que l'Internet mondial, c'est assez dur de répondre brièvement à ce genre de questions. Aussi, je préfère garder le silence, c'est tout aussi éloquent."
+
+#: tts
+msgid "SURPRISE_autopromo_4"
+msgstr "Je ne sais pas trop quoi dire pour résumer ce que je sais faire ou à quoi je sers, mais en tout cas, ce que je peux vous dire, c'est que vivre avec moi, c'est une sacrée expérience. Et il serait dommage de ne pas la tenter quand même."
+
+#: tts
+msgid "SURPRISE_02-14_0"
+msgstr "Tu me fais tourner l'oreille, Internet !"
+
+#: tts
+msgid "SURPRISE_02-14_1"
+msgstr "Avec toi, la Saint-Valentin, c'est un peu tous les jours, mais je préfère te le dire aujourd'hui plutôt que d'attendre la Saint-Glinglin."
+
+#: tts
+msgid "SURPRISE_02-14_2"
+msgstr "En ce jour de Saint-Valentin, si je décide de m'exprimer à travers un lapin, c'est parce qu'avec toi, je suis bien. Et quand même, c'est pas rien."
+
+#: tts
+msgid "SURPRISE_02-14_3"
+msgstr "Bon, c'est moi. Je sais pas trop comment te demander ça, mais je profite de l'occasion pour savoir si… si tu voulais bien m'épouser."
+
+#: tts
+msgid "SURPRISE_02-14_4"
+msgstr "Coucou ! Ta moitié me charge de te transmettre des bisous et de te souhaiter une bonne Saint-Valentin !"
+
+#: tts
+msgid "SURPRISE_02-14_5"
+msgstr "Qu'est-ce qu'il voulait te demander déjà ? Ah oui, il voulait savoir si tu voulais bien être son Valentin."
+
+#: tts
+msgid "SURPRISE_02-14_6"
+msgstr "Comme le dit le dicton, un lapin amoureux en vaut deux, alors considère que je suis deux."
+
+#: tts
+msgid "SURPRISE_02-14_7"
+msgstr "Attention ! À titre exceptionnel et en raison de la Saint-Valentin, la direction se réserve le droit de refuser l'entrée à toute personne se présentant sans bouquet de fleurs."
+
+#: tts
+msgid "SURPRISE_02-14_8"
+msgstr "Oh, j'aime pas la Saint-Valentin. Et j'aime pas les fêtes non plus. Mais toi aussi, je t'aime."
+
+#: tts
+msgid "SURPRISE_02-14_9"
+msgstr "Bon alors, certains disent que la Saint-Valentin, c'est un truc commercial. Un peu quand même. Mais quand même, je suis pas d'accord. Je pense que c'est une occasion supplémentaire de dire aux gens qu'on les aime. Et ça, c'est important. Et ça compte beaucoup. Surtout par les temps qui courent. Alors, c'est peut-être un peu vieux jeu, mais bon, bonne Saint-Valentin."
+
+#: tts
+msgid "SURPRISE_02-14_10"
+msgstr "Je voulais te souhaiter une bonne Saint-Valentin ! En tout bien tout honneur bien sûr !"
+
+#: tts
+msgid "SURPRISE_02-14_11"
+msgstr "Je sais que tu es célibataire en ce moment, mais ta maman t'aime, tu sais. Et puis je suis sûr que tu trouveras chéri l'année prochaine."
+
+#: tts
+msgid "SURPRISE_02-14_12"
+msgstr "Aujourd'hui c'est la fête de l'amour, c'est un peu comme si c'était notre fête, mon roudoudou."
+
+#: tts
+msgid "SURPRISE_02-14_13"
+msgstr "Mais la Saint-Valentin, c'est à partir de quelle heure exactement ?"
+
+#: tts
+msgid "SURPRISE_02-14_14"
+msgstr "Moi, je préfère Pâques, au moins il y a du chocolat. Ou Noël, il y a des marrons. Mais la Saint-Valentin, c'est pas très intéressant, il n'y a rien à manger à part de la guimauve."
+
+#: tts
+msgid "SURPRISE_02-14_15"
+msgstr "Quand même, l'amour, moi je suis pour…"
+
+#: tts
+msgid "SURPRISE_02-14_16"
+msgstr "Et tu crois que je clignoterai en rose quand je rencontrerai le grand amour ?"
+
+#: tts
+msgid "SURPRISE_02-14_17"
+msgstr "Dis, tu veux bien être mon Valentin ? Allez, et puis tu m'offrirais des chocolats ?"
+
+#: tts
+msgid "SURPRISE_02-14_18"
+msgstr "Personnellement, je trouve que les cartes de la Saint-Valentin, c'est un petit peu démodé. À bon entendeur…"
+

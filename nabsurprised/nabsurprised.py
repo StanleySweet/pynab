@@ -1,31 +1,16 @@
 import datetime
-import json
 import logging
-import os
 import random
 import sys
 from zoneinfo import ZoneInfo
 
-from django.utils.translation import gettext as _, override, to_language
+from django.utils.translation import gettext as _, override
 
 from nabcommon.config_client import ConfigClient
 from nabcommon.nabservice import NabRandomService
 from nabcommon.typing import NabdPacket
 
 from . import rfid_data
-
-
-def _load_answers():
-    path = os.path.join(os.path.dirname(__file__), "answers_text.json")
-    if os.path.exists(path):
-        with open(path) as f:
-            data = json.load(f)
-            logging.info(
-                "nabsurprised: loaded %d locales from answers_text.json", len(data)
-            )
-            return data
-    logging.warning("nabsurprised: answers_text.json not found, MP3 fallback only")
-    return {}
 
 
 class NabSurprised(NabRandomService):
@@ -47,7 +32,6 @@ class NabSurprised(NabRandomService):
     def __init__(self):
         super().__init__(configd=True, translations=True)
         self.client = ConfigClient()
-        self._answers = _load_answers()
         self._nabd_asleep = False
         logging.info("nabsurprised: startup complete")
 
@@ -64,17 +48,31 @@ class NabSurprised(NabRandomService):
             return
         await self._do_perform(expiration, None, None)
 
+    def _tts_texts(self, type):
+        texts = []
+        for i in range(100):
+            msgid = f"SURPRISE_{type}_{i}"
+            text = _(msgid)
+            if text == msgid:
+                break
+            texts.append(text)
+        if not texts:
+            fallback = _("SURPRISE_surprise_0")
+            if fallback != "SURPRISE_surprise_0":
+                texts = [fallback]
+            else:
+                texts = ["Surprise!"]
+        return texts
+
     async def _do_perform(self, expiration, lang, type):
         logging.info("nabsurprised: performing surprise, type=%s", type)
         cfg = await self.client.get_async("nabsurprised")
         if cfg.get("use_tts"):
             if lang is None or lang == "default":
                 lang = "fr_FR"
-            locale_answers = self._answers.get(lang, {})
-            texts = locale_answers.get(type) or locale_answers.get(
-                "surprise", ["Surprise!"]
-            )
-            text = random.choice(texts)
+            with override(lang):
+                texts = self._tts_texts(type)
+                text = random.choice(texts)
             path = f"tts:{text}"
         else:
             if lang is None or lang == "default":
