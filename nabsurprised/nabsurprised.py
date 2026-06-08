@@ -4,6 +4,7 @@ import logging
 import os
 import random
 import sys
+from zoneinfo import ZoneInfo
 
 from django.utils.translation import gettext as _, override, to_language
 
@@ -47,6 +48,7 @@ class NabSurprised(NabRandomService):
         super().__init__(configd=True, translations=True)
         self.client = ConfigClient()
         self._answers = _load_answers()
+        self._nabd_asleep = False
         logging.info("nabsurprised: startup complete")
 
     async def get_config(self):
@@ -57,6 +59,9 @@ class NabSurprised(NabRandomService):
         await self.client.set_async("nabsurprised", {"next_surprise": next_date})
 
     async def perform(self, expiration, args, config):
+        if self._nabd_asleep:
+            logging.info("nabsurprised: rabbit asleep, skipping scheduled surprise")
+            return
         await self._do_perform(expiration, None, None)
 
     async def _do_perform(self, expiration, lang, type):
@@ -121,7 +126,84 @@ class NabSurprised(NabRandomService):
                 NabSurprised.FREQUENCY_SECONDS[NabSurprised.RARELY],
             )  # nosec B311
 
+    def compute_next(self, saved_date, saved_args, frequency, reason):
+        next_t = super().compute_next(saved_date, saved_args, frequency, reason)
+        if next_t is None:
+            return None
+        next_date, next_args = next_t
+        adjusted = self._adjust_to_waking_hours(next_date)
+        return (adjusted, next_args)
+
+    def _adjust_to_waking_hours(self, dt):
+        try:
+            clock_cfg = self._read_clock_cfg()
+            if clock_cfg is None:
+                return dt
+            if clock_cfg.get("sleep_wakeup_override") is True:
+                return dt
+            local_tz = ZoneInfo(self._read_system_tz())
+            local_dt = dt.astimezone(local_tz)
+            sleep_hour, sleep_min, wakeup_hour, wakeup_min = (
+                self._get_sleep_schedule(clock_cfg, local_dt)
+            )
+            if None in (sleep_hour, sleep_min, wakeup_hour, wakeup_min):
+                return dt
+            current = (local_dt.hour, local_dt.minute)
+            wakeup = (wakeup_hour, wakeup_min)
+            sleep = (sleep_hour, sleep_min)
+            if wakeup < sleep:
+                is_sleeping = current < wakeup or current >= sleep
+            else:
+                is_sleeping = current < wakeup and current >= sleep
+            if not is_sleeping:
+                return dt
+            wakeup_local = local_dt.replace(
+                hour=wakeup_hour, minute=wakeup_min, second=0, microsecond=0
+            )
+            if wakeup_local <= local_dt:
+                wakeup_local += datetime.timedelta(days=1)
+            wakeup_utc = wakeup_local.astimezone(datetime.timezone.utc)
+            return wakeup_utc + datetime.timedelta(
+                seconds=random.uniform(1800, 7200)
+            )
+        except Exception:
+            logging.debug("nabsurprised: _adjust_to_waking_hours failed", exc_info=True)
+            return dt
+
+    @staticmethod
+    def _read_system_tz():
+        try:
+            with open("/etc/timezone") as f:
+                return f.read().strip()
+        except Exception:
+            return "UTC"
+
+    @staticmethod
+    def _get_sleep_schedule(clock_cfg, local_dt):
+        if clock_cfg.get("settings_per_day"):
+            adjusted = local_dt - datetime.timedelta(hours=3)
+            day = adjusted.strftime("%A").lower()
+            wakeup_hour = clock_cfg.get(f"wakeup_hour_{day}")
+            sleep_hour = clock_cfg.get(f"sleep_hour_{day}")
+            wakeup_min = clock_cfg.get(f"wakeup_min_{day}")
+            sleep_min = clock_cfg.get(f"sleep_min_{day}")
+        else:
+            wakeup_hour = clock_cfg.get("wakeup_hour")
+            sleep_hour = clock_cfg.get("sleep_hour")
+            wakeup_min = clock_cfg.get("wakeup_min")
+            sleep_min = clock_cfg.get("sleep_min")
+        return (sleep_hour, sleep_min, wakeup_hour, wakeup_min)
+
+    @staticmethod
+    def _read_clock_cfg():
+        try:
+            return ConfigClient().get_dict("nabclockd")
+        except Exception:
+            return None
+
     async def process_nabd_packet(self, packet: NabdPacket):
+        if packet["type"] == "state":
+            self._nabd_asleep = packet.get("state") == "asleep"
         if packet["type"] == "asr_event":
             intent = packet["nlu"]["intent"]
             if intent in NabSurprised.NLU_INTENTS:
