@@ -44,6 +44,7 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
         self.mastodon_stream_handle = None
         self.current_access_token = None
         self.listening_to_ears = False
+        self._nabd_asleep = False
 
     async def __config(self):
         return await self.client.get_async("nabmastodond")
@@ -272,9 +273,9 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
                 await self.send_ears(params["left"], params["right"])
 
     async def play_message(self, message, sender_name):
-        """
-        Play pairing protocol message
-        """
+        if self._nabd_asleep:
+            logging.info("nabmastodond: rabbit asleep, skipping message")
+            return
         cfg = await self.__config()
         if cfg.get("use_tts") and message != "ears":
             from django.utils.translation import gettext as _, override, to_language
@@ -433,7 +434,9 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
                 )
 
     async def process_nabd_packet(self, packet: NabdPacket):
-        if packet["type"] == "ears_event":
+        if packet["type"] == "state":
+            self._nabd_asleep = packet.get("state") == "asleep"
+        elif packet["type"] == "ears_event":
             config = await self.__config()
             if config.get("spouse_pairing_state") == "married":
                 if self.mastodon_client:

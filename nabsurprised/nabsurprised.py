@@ -42,11 +42,11 @@ class NabSurprised(NabRandomService):
     async def update_next(self, next_date, next_args):
         await self.client.set_async("nabsurprised", {"next_surprise": next_date})
 
-    async def perform(self, expiration, args, config):
-        if self._nabd_asleep:
+    async def perform(self, expiration, args, config, *, force=False, **kwargs):
+        if not force and self._nabd_asleep:
             logging.info("nabsurprised: rabbit asleep, skipping scheduled surprise")
             return
-        await self._do_perform(expiration, None, None)
+        await self._do_perform(expiration, **kwargs)
 
     def _tts_texts(self, type):
         texts = []
@@ -102,6 +102,16 @@ class NabSurprised(NabRandomService):
         )
         self.writer.write(packet.encode("utf8"))
         await self.writer.drain()
+
+    async def _nabd_get_and_clear_force(self):
+        try:
+            cfg = await self.client.get_dict_async("nabsurprised")
+            force = cfg.force_next_performance if hasattr(cfg, 'force_next_performance') else False
+            if force:
+                await self.client.set_async("nabsurprised", {"force_next_performance": False})
+            return force
+        except Exception:
+            return False
 
     def compute_random_delta(self, frequency):
         if frequency == NabSurprised.VERY_OFTEN:
@@ -207,7 +217,9 @@ class NabSurprised(NabRandomService):
             if intent in NabSurprised.NLU_INTENTS:
                 logging.info("nabsurprised: ASR trigger, intent=%s", intent)
                 _, type = intent.split("/")
-                await self._do_perform(None, None, type)
+                now = datetime.datetime.now(datetime.timezone.utc)
+                expiration = now + datetime.timedelta(minutes=1)
+                await self.perform(expiration, None, None, type=type)
         elif (
             packet["type"] == "rfid_event"
             and packet["app"] == "nabsurprised"
@@ -221,7 +233,9 @@ class NabSurprised(NabRandomService):
                 lang = "default"
                 type = "surprise"
             logging.info("nabsurprised: RFID trigger, type=%s, lang=%s", type, lang)
-            await self._do_perform(None, lang, type)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            expiration = now + datetime.timedelta(minutes=1)
+            await self.perform(expiration, None, None, force=True, lang=lang, type=type)
 
 
 if __name__ == "__main__":

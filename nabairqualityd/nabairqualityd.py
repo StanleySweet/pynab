@@ -65,6 +65,7 @@ class NabAirqualityd(NabInfoCachedService):
 
     def __init__(self):
         super().__init__(configd=True, translations=True)
+        self._nabd_asleep = False
         self.client = ConfigClient()
 
     async def get_config(self):
@@ -143,6 +144,16 @@ class NabAirqualityd(NabInfoCachedService):
         info_animation = NabAirqualityd.ANIMATIONS[info_data["data"]]
         return info_animation
 
+    async def _nabd_get_and_clear_force(self):
+        try:
+            cfg = await self.client.get_dict_async("nabairqualityd")
+            force = cfg.force_next_performance if hasattr(cfg, 'force_next_performance') else False
+            if force:
+                await self.client.set_async("nabairqualityd", {"force_next_performance": False})
+            return force
+        except Exception:
+            return False
+
     async def perform_additional(self, expiration, type, info_data, config_t):
         logging.info(f"perform_additional: type={type}, info_data={'None' if info_data is None else 'loaded'}")
         if info_data is None:
@@ -177,10 +188,22 @@ class NabAirqualityd(NabInfoCachedService):
             await self.writer.drain()
 
     async def process_nabd_packet(self, packet):
+        if packet["type"] == "state":
+            self._nabd_asleep = packet.get("state") == "asleep"
+            return
+
         if (
             packet["type"] == "asr_event"
             and packet["nlu"]["intent"] == "nabairqualityd/forecast"
-        ) or (
+        ):
+            if self._nabd_asleep:
+                logging.info("nabairqualityd: rabbit asleep, skipping ASR trigger")
+                return
+            next_date, next_args, config_t = await self.get_config()
+            now = datetime.datetime.now(datetime.timezone.utc)
+            expiration = now + datetime.timedelta(minutes=1)
+            await self.perform(expiration, "today", config_t)
+        elif (
             packet["type"] == "rfid_event"
             and packet["app"] == "nabairqualityd"
             and packet["event"] == "detected"
@@ -188,7 +211,7 @@ class NabAirqualityd(NabInfoCachedService):
             next_date, next_args, config_t = await self.get_config()
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=1)
-            await self.perform(expiration, "today", config_t)
+            await self.perform(expiration, "today", config_t, force=True)
 
 
 if __name__ == "__main__":

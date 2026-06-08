@@ -46,6 +46,7 @@ class Nab8Balld(NabService):
         super().__init__(configd=True, translations=True)
         self._interactive = False
         self._timeout_task = None
+        self._nabd_asleep = False
         self.client = ConfigClient()
         logging.info("nab8balld: startup complete")
 
@@ -72,7 +73,10 @@ class Nab8Balld(NabService):
             )
         self.writer.write(packet.encode("utf8"))
 
-    async def perform(self, lang):
+    async def perform(self, lang, *, force=False):
+        if not force and self._nabd_asleep:
+            logging.info("nab8balld: rabbit asleep, skipping")
+            return
         logging.info("nab8balld: performing answer, lang=%s", lang)
         config = await self.__config()
         if config.get("use_tts"):
@@ -99,6 +103,9 @@ class Nab8Balld(NabService):
         await self.writer.drain()
 
     async def process_nabd_packet(self, packet: NabdPacket):
+        if packet["type"] == "state":
+            self._nabd_asleep = packet.get("state") == "asleep"
+            return
         if "type" in packet:
             processors = {
                 "button_event": self.process_button_event_packet,
@@ -173,6 +180,9 @@ class Nab8Balld(NabService):
             await self.entered_interactive()
 
     async def process_asr_event_packet(self, packet):
+        if self._nabd_asleep:
+            logging.info("nab8balld: rabbit asleep, skipping ASR trigger")
+            return
         if packet["nlu"]["intent"] == "nab8balld/8ball":
             logging.info("nab8balld: ASR trigger")
             await self.perform(None)
@@ -184,7 +194,7 @@ class Nab8Balld(NabService):
             else:
                 lang = "default"
             logging.info("nab8balld: RFID trigger, lang=%s", lang)
-            await self.perform(lang)
+            await self.perform(lang, force=True)
 
     def run(self):
         super().connect()

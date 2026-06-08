@@ -264,13 +264,17 @@ class NabWeatherd(NabInfoService):
 
     def __init__(self):
         super().__init__(configd=True, translations=True)
+        self._nabd_asleep = False
         self.client = ConfigClient()
 
-    async def perform(self, expiration, args, config):
+    async def perform(self, expiration, args, config, *, force=False):
+        if not force and self._nabd_asleep:
+            logging.info("nabweatherd: rabbit asleep, skipping")
+            return
 
         weather_forecast = "today"
 
-        await NabInfoService.perform(self, expiration, args, config)
+        await NabInfoService.perform(self, expiration, args, config, force=force)
 
         (
             location,
@@ -663,11 +667,21 @@ class NabWeatherd(NabInfoService):
             self.writer.write(packet.encode("utf8") + b"\r\n")
         await self.writer.drain()
 
-    async def _do_perform(self, type):
+    async def _nabd_get_and_clear_force(self):
+        try:
+            cfg = await self.client.get_dict_async("nabweatherd")
+            force = cfg.force_next_performance if hasattr(cfg, 'force_next_performance') else False
+            if force:
+                await self.client.set_async("nabweatherd", {"force_next_performance": False})
+            return force
+        except Exception:
+            return False
+
+    async def _do_perform(self, type, *, force=False):
         next_date, next_args, config_t = await self.get_config()
         now = datetime.datetime.now(datetime.timezone.utc)
         expiration = now + datetime.timedelta(minutes=1)
-        await self.perform(expiration, type, config_t)
+        await self.perform(expiration, type, config_t, force=force)
 
     async def _do_perform_additional(self, config, type):
 
@@ -679,11 +693,17 @@ class NabWeatherd(NabInfoService):
         await self.perform_additional(expiration, type, info_data, config)
 
     async def process_nabd_packet(self, packet: NabdPacket):
+        if packet["type"] == "state":
+            self._nabd_asleep = packet.get("state") == "asleep"
+            return
 
         if (
             packet["type"] == "asr_event"
             and packet["nlu"]["intent"] == "nabweatherd/forecast"
         ):
+            if self._nabd_asleep:
+                logging.info("nabweatherd: rabbit asleep, skipping ASR trigger")
+                return
             if "date" in packet["nlu"] and packet["nlu"]["date"][
                 :10
             ] != datetime.datetime.now().strftime("%Y-%m-%d"):
@@ -702,7 +722,7 @@ class NabWeatherd(NabInfoService):
             else:
                 type = "today"
             logging.debug(f"RFID triggered forecast for {type}")
-            await self._do_perform(type)
+            await self._do_perform(type, force=True)
 
 
 if __name__ == "__main__":

@@ -26,8 +26,8 @@ class NabTaichid(NabRandomService):
             "nabtaichid", {"next_taichi": next_date}
         )
 
-    async def perform(self, expiration, args, config):
-        if self._nabd_asleep:
+    async def perform(self, expiration, args, config, *, force=False):
+        if not force and self._nabd_asleep:
             logging.info("nabtaichid: rabbit asleep, skipping tai chi")
             return
         logging.info("nabtaichid: performing tai chi")
@@ -38,6 +38,16 @@ class NabTaichid(NabRandomService):
         )
         self.writer.write(packet.encode("utf8"))
         await self.writer.drain()
+
+    async def _nabd_get_and_clear_force(self):
+        try:
+            cfg = await self.client.get_async("nabtaichid")
+            force = cfg.get("force_next_performance", False)
+            if force:
+                await self.client.set_async("nabtaichid", {"force_next_performance": False})
+            return force
+        except Exception:
+            return False
 
     def compute_random_delta(self, frequency):
         return (256 - frequency) * 60 * (random.uniform(0, 255) + 64) / 128
@@ -61,13 +71,10 @@ class NabTaichid(NabRandomService):
             and packet["app"] == "nabtaichid"
             and packet["event"] == "detected"
         ):
-            if self._nabd_asleep:
-                logging.info("nabtaichid: rabbit asleep, skipping RFID trigger")
-                return
             logging.info("nabtaichid: RFID trigger")
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=1)
-            await self.perform(expiration, None, None)
+            await self.perform(expiration, None, None, force=True)
 
 
 if __name__ == "__main__":

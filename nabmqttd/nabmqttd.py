@@ -395,6 +395,7 @@ class NabMqttd(NabService):
                     {
                         "next_performance_date": now,
                         "next_performance_type": type,
+                        "force_next_performance": True,
                     },
                 )
                 NabWeatherd.signal_daemon()
@@ -406,6 +407,7 @@ class NabMqttd(NabService):
                     {
                         "next_performance_date": now,
                         "next_performance_type": type,
+                        "force_next_performance": True,
                     },
                 )
                 NabAirqualityd.signal_daemon()
@@ -418,7 +420,7 @@ class NabMqttd(NabService):
 
             now = datetime.datetime.now(datetime.timezone.utc)
             await self.client.set_async(
-                "nabtaichid", {"next_taichi": now}
+                "nabtaichid", {"next_taichi": now, "force_next_performance": True}
             )
             NabTaichid.signal_daemon()
         except Exception as e:
@@ -635,6 +637,8 @@ class NabMqttd(NabService):
         logging.info(f"Published HA discovery for device {device_id}")
 
     async def process_nabd_packet(self, packet):
+        if packet.get("type") == "state":
+            self._nabd_asleep = packet.get("state") == "asleep"
         if not self.mqtt_connected or self.mqtt_client is None:
             return
         ptype = packet.get("type")

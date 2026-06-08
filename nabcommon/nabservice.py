@@ -34,6 +34,8 @@ class NabService(ABC):
         self.writer = None
         self.loop = None
         self.running = True
+        self._nabd_asleep = False
+        self.client = None
         signal.signal(signal.SIGUSR1, self.signal_handler)
 
     def signal_handler(self, sig, frame):
@@ -312,14 +314,20 @@ class NabRecurrentService(NabService, ABC):
         """
 
     @abstractmethod
-    async def perform(self, expiration_date, args, config):
+    async def perform(self, expiration_date, args, config, *, force=False):
         """
         Perform the action.
 
         This function should not refer to the database.
         expiration_date is to be passed in the packet(s) written to nabd.
         args is whatever was computed by compute_next
+        force: if True, override sleep check
         """
+
+    async def _nabd_get_and_clear_force(self):
+        """Check if there's a forced perform request from MQTT.
+        Override in subclasses that support MQTT force triggering."""
+        return False
 
     async def reload_config(self):
         logging.info("reloading configuration")
@@ -347,11 +355,13 @@ class NabRecurrentService(NabService, ABC):
                     # Determine if it's time to perform
                     now = datetime.datetime.now(datetime.timezone.utc)
                     if next_date is not None and next_date <= now:
+                        force = await self._nabd_get_and_clear_force()
                         try:
                             await self.perform(
                                 next_date + datetime.timedelta(minutes=1),
                                 next_args,
                                 config,
+                                force=force,
                             )
                         except Exception as e:
                             logging.error(
@@ -494,7 +504,10 @@ class NabInfoService(NabRecurrentService, ABC):
         or the website.
         """
 
-    async def perform(self, expiration_date, type, config):
+    async def perform(self, expiration_date, type, config, *, force=False):
+        if not force and self._nabd_asleep:
+            logging.info(f"{type(self).__name__.lower()}: rabbit asleep, skipping")
+            return
         logging.info(f"perform called with args={type}")
         info_data = await self._do_fetch_info_data(config)
         info_animation = self.get_animation(info_data)
