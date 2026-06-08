@@ -14,6 +14,7 @@ class NabTaichid(NabRandomService):
     def __init__(self):
         super().__init__(configd=True)
         self.client = ConfigClient()
+        self._nabd_asleep = False
         logging.info("nabtaichid: startup complete")
 
     async def get_config(self):
@@ -26,6 +27,9 @@ class NabTaichid(NabRandomService):
         )
 
     async def perform(self, expiration, args, config):
+        if self._nabd_asleep:
+            logging.info("nabtaichid: rabbit asleep, skipping tai chi")
+            return
         logging.info("nabtaichid: performing tai chi")
         packet = (
             '{"type":"command",'
@@ -39,10 +43,15 @@ class NabTaichid(NabRandomService):
         return (256 - frequency) * 60 * (random.uniform(0, 255) + 64) / 128
 
     async def process_nabd_packet(self, packet: NabdPacket):
+        if packet["type"] == "state":
+            self._nabd_asleep = packet.get("state") == "asleep"
         if (
             packet["type"] == "asr_event"
             and packet["nlu"]["intent"] == "nabtaichid/taichi"
         ):
+            if self._nabd_asleep:
+                logging.info("nabtaichid: rabbit asleep, skipping ASR trigger")
+                return
             logging.info("nabtaichid: ASR trigger")
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=1)
@@ -52,6 +61,9 @@ class NabTaichid(NabRandomService):
             and packet["app"] == "nabtaichid"
             and packet["event"] == "detected"
         ):
+            if self._nabd_asleep:
+                logging.info("nabtaichid: rabbit asleep, skipping RFID trigger")
+                return
             logging.info("nabtaichid: RFID trigger")
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=1)
