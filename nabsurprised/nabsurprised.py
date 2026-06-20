@@ -64,7 +64,7 @@ class NabSurprised(NabRandomService):
                 texts = ["Surprise!"]
         return texts
 
-    async def _do_perform(self, expiration, lang, type):
+    async def _do_perform(self, expiration, lang=None, type=None):
         logging.info("nabsurprised: performing surprise, type=%s", type)
         cfg = await self.client.get_async("nabsurprised")
         if cfg.get("use_tts"):
