@@ -1,6 +1,6 @@
 [Unit]
-Description=Nabaztag core daemon (consolidated minimal services)
-After=nabd.service
+Description=Nabaztag core daemon (nabd + all service daemons)
+After=network.target
 StartLimitIntervalSec=0
 
 [Service]

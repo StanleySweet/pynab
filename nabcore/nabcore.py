@@ -53,6 +53,8 @@ def _import_services():
 class NabCore:
     def __init__(self):
         self.services = []
+        self._nabd = None
+        self._nabd_server = None
         from nabcommon import settings as nab_settings
 
         nab_settings.configure("nabcore", orm=False, translations=True)
@@ -70,6 +72,36 @@ class NabCore:
             loop.call_soon_threadsafe(
                 lambda s=svc: loop.create_task(s.reload_config())
             )
+        if self._nabd:
+            loop.call_soon_threadsafe(
+                lambda: loop.create_task(self._nabd.reload_config())
+            )
+
+    async def _start_nabd(self):
+        from nabd.nabd import Nabd
+        from nabcommon import hardware
+
+        hardware_platform = hardware.device_model()
+        if hardware.is_pi_zero(hardware_platform):
+            from nabd.nabio_hw import NabIOHW
+
+            nabiocls = NabIOHW
+        else:
+            from nabd.nabio_virtual import NabIOVirtual
+
+            nabiocls = NabIOVirtual
+        self._nabd = Nabd(nabiocls())
+        loop = asyncio.get_event_loop()
+        self._nabd.loop = loop
+        self._nabd.nabio.bind_button_event(loop, self._nabd.button_callback)
+        self._nabd.nabio.bind_ears_event(loop, self._nabd.ears_callback)
+        self._nabd.nabio.bind_rfid_event(loop, self._nabd.rfid_callback)
+        loop.create_task(self._nabd.idle_worker_loop())
+        self._nabd_server = await asyncio.start_server(
+            self._nabd.service_loop,
+            host=NabService.HOST,
+            port=NabService.PORT_NUMBER,
+        )
 
     async def _connect_service(self, svc):
         retry = 10
@@ -98,6 +130,14 @@ class NabCore:
         nablogging.setup_asyncio_logging(loop)
         signal.signal(signal.SIGUSR1, self._signal_handler)
 
+        try:
+            loop.run_until_complete(self._start_nabd())
+        except Exception:
+            logging.critical(
+                "Failed to start nabd: %s", traceback.format_exc()
+            )
+            sys.exit(1)
+
         results = loop.run_until_complete(
             asyncio.gather(
                 *(self._connect_service(svc) for svc in self.services),
@@ -118,9 +158,16 @@ class NabCore:
         except KeyboardInterrupt:
             pass
         finally:
+            if self._nabd:
+                loop.run_until_complete(self._nabd.stop_idle_worker())
+                for writer in self._nabd.service_writers.copy():
+                    writer.close()
+                    loop.run_until_complete(writer.wait_closed())
             for svc in self.services:
                 if svc.writer:
                     svc.writer.close()
+            if self._nabd_server:
+                self._nabd_server.close()
             loop.run_until_complete(
                 asyncio.gather(
                     *(
