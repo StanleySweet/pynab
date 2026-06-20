@@ -20,19 +20,31 @@ def _import_services():
     if _SERVICE_CLASSES is not None:
         return _SERVICE_CLASSES
     from nab8balld.nab8balld import Nab8Balld
+    from nabairqualityd.nabairqualityd import NabAirqualityd
     from nabbookd.nabbookd import NabBookd
+    from nabclockd.nabclockd import NabClockd
     from nabiftttd.nabiftttd import NabIftttd
+    from nabmastodond.nabmastodond import NabMastodond
+    from nabmqttd.nabmqttd import NabMqttd
     from nabradio.nabradio import NabRadio
+    from nabsurprised.nabsurprised import NabSurprised
     from nabtaichid.nabtaichid import NabTaichid
     from nabttsd.nabttsd import NabTtsd
+    from nabweatherd.nabweatherd import NabWeatherd
     from nabwebhook.nabwebhook import NabWebhook
     _SERVICE_CLASSES = [
         Nab8Balld,
+        NabAirqualityd,
         NabBookd,
+        NabClockd,
         NabIftttd,
+        NabMastodond,
+        NabMqttd,
         NabRadio,
+        NabSurprised,
         NabTaichid,
         NabTtsd,
+        NabWeatherd,
         NabWebhook,
     ]
     return _SERVICE_CLASSES
@@ -46,6 +58,11 @@ class NabCore:
         nab_settings.configure("nabcore", orm=False, translations=True)
         for cls in _import_services():
             self.services.append(cls())
+
+        registry = {type(svc).__name__: svc for svc in self.services}
+        for svc in self.services:
+            if hasattr(svc, "_set_service_registry"):
+                svc._set_service_registry(registry)
 
     def _signal_handler(self, sig, frame):
         loop = asyncio.get_event_loop()
@@ -104,6 +121,16 @@ class NabCore:
             for svc in self.services:
                 if svc.writer:
                     svc.writer.close()
+            loop.run_until_complete(
+                asyncio.gather(
+                    *(
+                        svc.stop_service_loop()
+                        for svc in self.services
+                        if hasattr(svc, "stop_service_loop")
+                    ),
+                    return_exceptions=True,
+                )
+            )
             loop.close()
 
     @classmethod

@@ -145,6 +145,9 @@ class NabMqttd(NabService):
         self._effective_device_id = ""
         self._radio_active = False
 
+    def _set_service_registry(self, registry):
+        self._service_registry = registry
+
     async def reload_config(self):
         logging.info("reloading configuration")
         self.config = await self.client.get_async("nabmqttd")
@@ -388,8 +391,6 @@ class NabMqttd(NabService):
         try:
             now = datetime.datetime.now(datetime.timezone.utc)
             if service_name == "nabweatherd":
-                from nabweatherd.nabweatherd import NabWeatherd
-
                 await self.client.set_async(
                     "nabweatherd",
                     {
@@ -398,10 +399,10 @@ class NabMqttd(NabService):
                         "force_next_performance": True,
                     },
                 )
-                NabWeatherd.signal_daemon()
+                svc = self._service_registry.get("NabWeatherd")
+                if svc:
+                    await svc.reload_config()
             elif service_name == "nabairqualityd":
-                from nabairqualityd.nabairqualityd import NabAirqualityd
-
                 await self.client.set_async(
                     "nabairqualityd",
                     {
@@ -410,19 +411,21 @@ class NabMqttd(NabService):
                         "force_next_performance": True,
                     },
                 )
-                NabAirqualityd.signal_daemon()
+                svc = self._service_registry.get("NabAirqualityd")
+                if svc:
+                    await svc.reload_config()
         except Exception as e:
             logging.error(f"Failed to trigger {service_name}: {e}")
 
     async def _trigger_taichi(self):
         try:
-            from nabtaichid.nabtaichid import NabTaichid
-
             now = datetime.datetime.now(datetime.timezone.utc)
             await self.client.set_async(
                 "nabtaichid", {"next_taichi": now, "force_next_performance": True}
             )
-            NabTaichid.signal_daemon()
+            svc = self._service_registry.get("NabTaichid")
+            if svc:
+                await svc.reload_config()
         except Exception as e:
             logging.error(f"Failed to trigger taichi: {e}")
 

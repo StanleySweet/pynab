@@ -467,25 +467,15 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
         else:
             await self.send_stop_listening_to_ears()
 
-    def run(self):
-        super().connect()
-        self.loop = asyncio.get_event_loop()
-        self.loop.run_until_complete(self.setup_streaming())
-        self.loop.run_until_complete(self.setup_initial_state())
-        try:
-            self.loop.run_forever()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            self.running = False  # signal to exit
-            self.writer.close()
-            self.close_streaming()
-            tasks = asyncio.all_tasks(self.loop)
-            for t in [t for t in tasks if not (t.done() or t.cancelled())]:
-                self.loop.run_until_complete(
-                    t
-                )  # give canceled tasks the last chance to run
-            self.loop.close()
+    def start_service_loop(self, loop):
+        self.loop = loop
+        async def _start():
+            await self.setup_streaming()
+            await self.setup_initial_state()
+        return loop.create_task(_start())
+
+    async def stop_service_loop(self):
+        self.close_streaming()
 
 
 if __name__ == "__main__":
