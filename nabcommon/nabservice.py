@@ -343,7 +343,10 @@ class NabRecurrentService(NabService, ABC):
                     try:
                         next_date, next_args, config = await self._load_config()
                     except Exception as e:
-                        logging.error(f"service_loop: _load_config error: {e}")
+                        logging.error(
+                            f"service_loop: _load_config error: {e}",
+                            exc_info=True,
+                        )
                         self.reason = NabRecurrentService.Reason.OTHER
                         try:
                             await asyncio.wait_for(
@@ -365,14 +368,16 @@ class NabRecurrentService(NabService, ABC):
                             )
                         except Exception as e:
                             logging.error(
-                                f"service_loop: perform error: {e}"
+                                f"service_loop: perform error: {e}",
+                                exc_info=True,
                             )
                         # reset date after performance
                         try:
                             await self.update_next(None, None)
                         except Exception as e:
                             logging.error(
-                                f"service_loop: update_next error: {e}"
+                                f"service_loop: update_next error: {e}",
+                                exc_info=True,
                             )
                         self.reason = (
                             NabRecurrentService.Reason.PERFORMANCE_PLAYED
