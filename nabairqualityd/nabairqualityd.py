@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import logging
 import sys
 
@@ -109,7 +110,10 @@ class NabAirqualityd(NabInfoCachedService):
             logging.error("aqicn request timed out after 20 seconds")
             return None
         except Exception as err:
-            logging.error(f"{err}")
+            logging.error(
+                f"nabairqualityd: aqicn fetch error: {err}",
+                exc_info=True,
+            )
             return None
 
         # Save inferred localization to configuration for display on web
@@ -122,7 +126,7 @@ class NabAirqualityd(NabInfoCachedService):
                 f"{str(cfg.localisation)} to: {str(city)}"
             )
             await self.client.set_async(
-                "nabairqualityd", {"localisation": city}
+                "nabairqualityd", {"localisation": json.dumps(city)}
             )
 
         return {
