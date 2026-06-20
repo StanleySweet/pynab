@@ -1,0 +1,17 @@
+[Unit]
+Description=Nabaztag core daemon (consolidated minimal services)
+After=nabd.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+WorkingDirectory=/opt/pynab
+EnvironmentFile=/opt/pynab/nabcore/nabcore.conf
+ExecStart=/opt/pynab/venv/bin/python -m nabcore.nabcore
+PIDFile=/run/nabcore.pid
+
+[Install]
+WantedBy=multi-user.target
