@@ -508,13 +508,13 @@ class NabWeatherd(NabInfoService):
         ):
 
             if info_data["next_rain"] is True:
-                await self._send_to_nabd({
+                self._outgoing.put_nowait({
                     "type": "info",
                     "info_id": "nabweatherd_rain",
                     "animation": self.RAIN_ONE_HOUR,
                 })
             else:
-                await self._send_to_nabd({
+                self._outgoing.put_nowait({
                     "type": "info", "info_id": "nabweatherd_rain",
                 })
 
@@ -525,7 +525,7 @@ class NabWeatherd(NabInfoService):
 
             # si weather on supprime l'animation rain
             if info_data["weather_animation_type"] == "weather_only":
-                await self._send_to_nabd({
+                self._outgoing.put_nowait({
                     "type": "info", "info_id": "nabweatherd_rain",
                 })
 
@@ -540,7 +540,7 @@ class NabWeatherd(NabInfoService):
 
         if info_data["weather_animation_type"] == "nothing":
             # Return mais avant on supprime l'animation rain
-            await self._send_to_nabd({
+            self._outgoing.put_nowait({
                 "type": "info", "info_id": "nabweatherd_rain",
             })
             logging.debug("get_animation: no visual information")
