@@ -257,6 +257,9 @@ class NabWeatherd(NabInfoService):
         "Slight showers": ("rainy", RAINY_INFO_ANIMATION),
         "Storms": ("stormy", STORMY_INFO_ANIMATION),
         "Thundershowers": ("stormy", STORMY_INFO_ANIMATION),
+        "Clear sky": ("sunny", SUNNY_INFO_ANIMATION),
+        "Risk of storms": ("stormy", STORMY_INFO_ANIMATION),
+        "Risk of storms / Clear sky": ("stormy", STORMY_INFO_ANIMATION),
     }
 
     weather_bedtime_done = False
@@ -482,8 +485,16 @@ class NabWeatherd(NabInfoService):
     def normalize_weather_class(self, weather_class):
         if weather_class in NabWeatherd.WEATHER_CLASSES:
             return weather_class
-        logging.warning(f"unexpected weather class: {weather_class}")
-        return None
+        for part in weather_class.split(" / "):
+            if part in NabWeatherd.WEATHER_CLASSES:
+                logging.warning(
+                    f"unexpected combined weather class: {weather_class}"
+                )
+                return part
+        logging.warning(
+            f"unexpected weather class: {weather_class}, defaulting to sunny"
+        )
+        return "Ensoleillé"
 
     def get_animation(self, info_data):
 
