@@ -415,7 +415,7 @@ echo "Installing service files"
 if [ $upgrade -eq 1 ]; then
   echo "Installing service files - 13/15" > /tmp/pynab.upgrade
 fi
-for service_file in nabd/nabd.socket */*.service ; do
+for service_file in */*.service ; do
   name=`basename ${service_file}`
   sudo sed -e "s|/opt/pynab|${root_dir}|g" -e "s|/home/pi/pynab|${root_dir}|g" < ${service_file} > /tmp/${name}
   sudo mv /tmp/${name} /lib/systemd/system/${name}
