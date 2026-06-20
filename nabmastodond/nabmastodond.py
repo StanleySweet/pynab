@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 import sys
 from operator import attrgetter
@@ -291,75 +292,61 @@ class NabMastodond(NabService, asyncio.Protocol, StreamListener):
                     "setup": _("Setup"),
                 }
                 text = _TTS_TEXTS.get(message, message)
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":["nabmastodond/respirations/*.mp3"]},'
-                '"body":[{"audio":["tts:' + text + '"]}]}'
-                "\r\n"
-            )
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabmastodond/respirations/*.mp3"]},
+                "body": [{"audio": [f"tts:{text}"]}],
+            })
         elif message == "ears":
-            packet = (
-                '{"type":"command",'
-                '"sequence":[{"audio":["nabmastodond/communion.wav"]}]}\r\n'
-            )
+            await self._send_to_nabd({
+                "type": "command",
+                "sequence": [{"audio": ["nabmastodond/communion.wav"]}],
+            })
         elif message == "proposal_received":
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":["nabmastodond/respirations/*.mp3"]},'
-                '"body":[{"audio":["nabmastodond/proposal_received.mp3"]}]}'
-                "\r\n"
-            )
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabmastodond/respirations/*.mp3"]},
+                "body": [{"audio": ["nabmastodond/proposal_received.mp3"]}],
+            })
         elif message == "proposal_refused":
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":["nabmastodond/respirations/*.mp3"]},'
-                '"body":[{"audio":["nabmastodond/proposal_refused.mp3"]}]}'
-                "\r\n"
-            )
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabmastodond/respirations/*.mp3"]},
+                "body": [{"audio": ["nabmastodond/proposal_refused.mp3"]}],
+            })
         elif message == "proposal_accepted":
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":["nabmastodond/respirations/*.mp3"]},'
-                '"body":[{"audio":["nabmastodond/proposal_accepted.mp3"]}]}'
-                "\r\n"
-            )
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabmastodond/respirations/*.mp3"]},
+                "body": [{"audio": ["nabmastodond/proposal_accepted.mp3"]}],
+            })
         elif message == "pairing_cancelled":
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":["nabmastodond/respirations/*.mp3"]},'
-                '"body":[{"audio":["nabmastodond/pairing_cancelled.mp3"]}]}'
-                "\r\n"
-            )
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabmastodond/respirations/*.mp3"]},
+                "body": [{"audio": ["nabmastodond/pairing_cancelled.mp3"]}],
+            })
         elif message == "setup":
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":["nabmastodond/respirations/*.mp3"]},'
-                '"body":[{"audio":["nabmastodond/setup.mp3"]}]}'
-                "\r\n"
-            )
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabmastodond/respirations/*.mp3"]},
+                "body": [{"audio": ["nabmastodond/setup.mp3"]}],
+            })
         else:
             return
-        self.writer.write(packet.encode("utf8"))
-        await self.writer.drain()
 
     async def send_start_listening_to_ears(self):
         if self.listening_to_ears is False:
-            packet = '{"type":"mode","mode":"idle","events":["ears"]}\r\n'
-            self.writer.write(packet.encode("utf8"))
-            await self.writer.drain()
+            await self._send_to_nabd({"type": "mode", "mode": "idle", "events": ["ears"]})
             self.listening_to_ears = True
 
     async def send_stop_listening_to_ears(self):
         if self.listening_to_ears:
-            packet = '{"type":"mode","mode":"idle","events":[]}\r\n'
-            self.writer.write(packet.encode("utf8"))
-            await self.writer.drain()
+            await self._send_to_nabd({"type": "mode", "mode": "idle", "events": []})
             self.listening_to_ears = False
 
     async def send_ears(self, left_ear, right_ear):
-        packet = f'{{"type":"ears","left":{left_ear},"right":{right_ear}}}\r\n'
-        self.writer.write(packet.encode("utf8"))
-        await self.writer.drain()
+        await self._send_to_nabd({"type": "ears", "left": left_ear, "right": right_ear})
 
     @staticmethod
     def send_dm(mastodon_client, target, message, params={}):

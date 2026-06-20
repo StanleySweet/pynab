@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import json
 import logging
 import random
 import sys
@@ -509,20 +508,15 @@ class NabWeatherd(NabInfoService):
         ):
 
             if info_data["next_rain"] is True:
-                packet = json.dumps(
-                    {
-                        "type": "info",
-                        "info_id": "nabweatherd_rain",
-                        "animation": self.RAIN_ONE_HOUR,
-                    },
-                    ensure_ascii=False,
-                )
+                await self._send_to_nabd({
+                    "type": "info",
+                    "info_id": "nabweatherd_rain",
+                    "animation": self.RAIN_ONE_HOUR,
+                })
             else:
-                packet = json.dumps(
-                    {"type": "info", "info_id": "nabweatherd_rain"},
-                    ensure_ascii=False,
-                )
-            self.writer.write(packet.encode("utf8") + b"\r\n")
+                await self._send_to_nabd({
+                    "type": "info", "info_id": "nabweatherd_rain",
+                })
 
         # Weather
         if (info_data["weather_animation_type"] == "weather_and_rain") or (
@@ -531,11 +525,9 @@ class NabWeatherd(NabInfoService):
 
             # si weather on supprime l'animation rain
             if info_data["weather_animation_type"] == "weather_only":
-                packet = json.dumps(
-                    {"type": "info", "info_id": "nabweatherd_rain"},
-                    ensure_ascii=False,
-                )
-                self.writer.write(packet.encode("utf8") + b"\r\n")
+                await self._send_to_nabd({
+                    "type": "info", "info_id": "nabweatherd_rain",
+                })
 
             weather_class = info_data["today_forecast_weather_class"]
             if weather_class is None or weather_class not in NabWeatherd.WEATHER_CLASSES:
@@ -548,11 +540,9 @@ class NabWeatherd(NabInfoService):
 
         if info_data["weather_animation_type"] == "nothing":
             # Return mais avant on supprime l'animation rain
-            packet = json.dumps(
-                {"type": "info", "info_id": "nabweatherd_rain"},
-                ensure_ascii=False,
-            )
-            self.writer.write(packet.encode("utf8") + b"\r\n")
+            await self._send_to_nabd({
+                "type": "info", "info_id": "nabweatherd_rain",
+            })
             logging.debug("get_animation: no visual information")
             return None
 
@@ -567,32 +557,20 @@ class NabWeatherd(NabInfoService):
         ) = config_t
         if location is None:
             logging.debug("No location (service is unconfigured)")
-            packet = json.dumps(
-                {
-                    "type": "message",
-                    "signature": {"audio": ["nabweatherd/signature.mp3"]},
-                    "body": [
-                        {"audio": ["nabweatherd/no-location-error.mp3"]}
-                    ],
-                    "expiration": expiration.isoformat(),
-                },
-                ensure_ascii=False,
-            )
-            self.writer.write(packet.encode("utf8") + b"\r\n")
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                "body": [{"audio": ["nabweatherd/no-location-error.mp3"]}],
+                "expiration": expiration.isoformat(),
+            })
         elif info_data is None:
             logging.debug("No data available")
-            packet = json.dumps(
-                {
-                    "type": "message",
-                    "signature": {"audio": ["nabweatherd/signature.mp3"]},
-                    "body": [
-                        {"audio": ["nabweatherd/no-data-error.mp3"]}
-                    ],
-                    "expiration": expiration.isoformat(),
-                },
-                ensure_ascii=False,
-            )
-            self.writer.write(packet.encode("utf8") + b"\r\n")
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                "body": [{"audio": ["nabweatherd/no-data-error.mp3"]}],
+                "expiration": expiration.isoformat(),
+            })
         else:
             if type == "today":
                 weather_class_key = info_data["today_forecast_weather_class"]
@@ -607,18 +585,12 @@ class NabWeatherd(NabInfoService):
                 logging.warning(
                     f"unexpected weather class for {type}: {weather_class_key}"
                 )
-                packet = json.dumps(
-                    {
-                        "type": "message",
-                        "signature": {"audio": ["nabweatherd/signature.mp3"]},
-                        "body": [
-                            {"audio": ["nabweatherd/no-data-error.mp3"]}
-                        ],
-                        "expiration": expiration.isoformat(),
-                    },
-                    ensure_ascii=False,
-                )
-                self.writer.write(packet.encode("utf8") + b"\r\n")
+                await self._send_to_nabd({
+                    "type": "message",
+                    "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                    "body": [{"audio": ["nabweatherd/no-data-error.mp3"]}],
+                    "expiration": expiration.isoformat(),
+                })
                 return
             (weather_class, info_animation) = NabWeatherd.WEATHER_CLASSES[
                 weather_class_key
@@ -643,40 +615,30 @@ class NabWeatherd(NabInfoService):
                             "temp": max_temp,
                             "unit": _("degrees Celsius"),
                         }
-                packet = json.dumps(
-                    {
-                        "type": "message",
-                        "signature": {"audio": ["nabweatherd/signature.mp3"]},
-                        "body": [{"audio": [f"tts:{text}"]}],
-                        "expiration": expiration.isoformat(),
-                    },
-                    ensure_ascii=False,
-                )
+                await self._send_to_nabd({
+                    "type": "message",
+                    "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                    "body": [{"audio": [f"tts:{text}"]}],
+                    "expiration": expiration.isoformat(),
+                })
             else:
                 unit_sound_file = "degree.mp3"
                 if unit == NabWeatherd.UNIT_FARENHEIT:
                     max_temp = round(max_temp * 1.8 + 32.0)
                     unit_sound_file = "degree_f.mp3"
-                packet = json.dumps(
-                    {
-                        "type": "message",
-                        "signature": {"audio": ["nabweatherd/signature.mp3"]},
-                        "body": [
-                            {
-                                "audio": [
-                                    f"nabweatherd/{type}.mp3",
-                                    f"nabweatherd/sky/{weather_class}.mp3",
-                                    f"nabweatherd/temp/{max_temp}.mp3",
-                                    f"nabweatherd/{unit_sound_file}",
-                                ]
-                            }
-                        ],
-                        "expiration": expiration.isoformat(),
-                    },
-                    ensure_ascii=False,
-                )
-            self.writer.write(packet.encode("utf8") + b"\r\n")
-        await self.writer.drain()
+                await self._send_to_nabd({
+                    "type": "message",
+                    "signature": {"audio": ["nabweatherd/signature.mp3"]},
+                    "body": [{
+                        "audio": [
+                            f"nabweatherd/{type}.mp3",
+                            f"nabweatherd/sky/{weather_class}.mp3",
+                            f"nabweatherd/temp/{max_temp}.mp3",
+                            f"nabweatherd/{unit_sound_file}",
+                        ]
+                    }],
+                    "expiration": expiration.isoformat(),
+                })
 
     async def _nabd_get_and_clear_force(self):
         try:

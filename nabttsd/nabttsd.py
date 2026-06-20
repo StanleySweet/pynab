@@ -232,7 +232,6 @@ class NabTtsd(NabService):
             pass
         finally:
             self.running = False
-            self.writer.close()
             tasks = asyncio.all_tasks(self.loop)
             for t in [t for t in tasks if not (t.done() or t.cancelled())]:
                 self.loop.run_until_complete(t)

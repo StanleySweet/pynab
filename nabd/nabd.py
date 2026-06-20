@@ -6,13 +6,12 @@ import getopt
 import json
 import logging
 import os
-import socket
 import subprocess
 import sys
 import time
 import traceback
 from enum import Enum
-from typing import Deque, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import Deque, Dict, List, Optional, Set, Tuple, Type, Union, cast
 
 import dateutil.parser
 from lockfile import AlreadyLocked, LockFailed  # type: ignore
@@ -20,7 +19,6 @@ from lockfile.pidlockfile import PIDLockFile  # type: ignore
 
 from nabcommon import hardware, nablogging, network, settings
 from nabcommon.config_client import ConfigClient
-from nabcommon.nabservice import NabService
 from nabcommon.typing import (
     Animation,
     AnyPacket,
@@ -72,7 +70,15 @@ def _parse_hex_color(value):
         return (255, 255, 255)
 
 
-IdleQueueItem = Tuple[ServicePacket, asyncio.StreamWriter]
+class ServiceChannel:
+    """Replaces StreamWriter as the communication handle for a service connection."""
+    def __init__(self, incoming: asyncio.Queue, name: str = ""):
+        self.incoming = incoming
+        self.events: List[str] = []
+        self.name = name
+
+
+IdleQueueItem = Tuple[ServicePacket, "ServiceChannel"]
 
 STATUS_EXPIRED = cast(ResponseExpiredPacketProto, {"status": "expired"})
 STATUS_OK = cast(ResponseOKPacketProto, {"status": "ok"})
@@ -103,7 +109,7 @@ class Nabd:
     INIT_EAR_POSITION = 0
     EAR_MOVEMENT_TIMEOUT = 0.5
 
-    SYSTEMD_ACTIVATED_FD = 3
+    EAR_MOVEMENT_TIMEOUT = 0.5
 
     def __init__(self, nabio: NabIO):
         settings.configure("nabd", orm=False)
@@ -120,10 +126,8 @@ class Nabd:
             str, Animation
         ] = {}  # Info persists across service connections.
         self.state = State.IDLE
-        # Dictionary of writers, i.e. connected services
-        # For each writer, value is the list of registered events
-        self.service_writers: Dict[asyncio.StreamWriter, List[str]] = {}
-        self.interactive_service_writer: Optional[asyncio.StreamWriter] = None
+        self.service_channels: Set[ServiceChannel] = set()
+        self.interactive_channel: Optional[ServiceChannel] = None
         # Events registered in interactive mode
         self.interactive_service_events: List[EventTypes] = []
         self.running = True
@@ -260,7 +264,7 @@ class Nabd:
         """
         # interactive -> playing or interactive -> idle depending on the
         # command queue
-        self.interactive_service_writer = None
+        self.interactive_channel = None
         await self.transition_to(State.IDLE)
 
     async def process_idle_item(self, item: IdleQueueItem):
@@ -315,7 +319,7 @@ class Nabd:
                 ):
                     self.write_response_packet(item[0], STATUS_OK, item[1])
                     await self.set_state(State.INTERACTIVE)
-                    self.interactive_service_writer = item[1]
+                    self.interactive_channel = item[1]
                     if "events" in item[0]:
                         self.interactive_service_events = item[0]["events"]
                     else:
@@ -377,29 +381,29 @@ class Nabd:
                 self.broadcast_state()
 
     async def process_info_packet(
-        self, any_packet: AnyPacket, writer: asyncio.StreamWriter
+        self, any_packet: AnyPacket, channel: ServiceChannel
     ):
         """Process an info packet"""
-        packet = self.__check_info_packet(any_packet, writer)
+        packet = self.__check_info_packet(any_packet, channel)
         if packet:
             if "animation" in packet:
                 self.info[packet["info_id"]] = packet["animation"]
             elif packet["info_id"] in self.info:
                 del self.info[packet["info_id"]]
-            self.write_response_packet(packet, STATUS_OK, writer)
+            self.write_response_packet(packet, STATUS_OK, channel)
             # Signal idle loop to make sure we display updated info
             async with self.idle_cv:
                 self.idle_cv.notify()
 
     def __check_info_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ) -> Optional[InfoPacket]:
         assert packet["type"] == "info"
         if "info_id" not in packet:
             self.write_response_packet(
                 packet,
                 status_error_malformed_packet("Missing required info_id slot"),
-                writer,
+                channel,
             )
             return None
         if not isinstance(packet["info_id"], str):
@@ -408,7 +412,7 @@ class Nabd:
                 status_error_malformed_packet(
                     "Invalid info_id slot, expected a string"
                 ),
-                writer,
+                channel,
             )
             return None
         if "animation" in packet:
@@ -418,7 +422,7 @@ class Nabd:
                     status_error_malformed_packet(
                         "Invalid animation slot, expected a dict"
                     ),
-                    writer,
+                    channel,
                 )
                 return None
             if "tempo" not in packet["animation"]:
@@ -427,7 +431,7 @@ class Nabd:
                     status_error_malformed_packet(
                         "Missing required tempo slot in animation"
                     ),
-                    writer,
+                    channel,
                 )
                 return None
             if not isinstance(
@@ -438,7 +442,7 @@ class Nabd:
                     status_error_malformed_packet(
                         "Invalid tempo slot in animation, expected a number"
                     ),
-                    writer,
+                    channel,
                 )
                 return None
             if "colors" not in packet["animation"]:
@@ -447,16 +451,16 @@ class Nabd:
                     status_error_malformed_packet(
                         "Missing required colors slot in animation"
                     ),
-                    writer,
+                    channel,
                 )
                 return None
         return cast(InfoPacket, packet)
 
     async def process_ears_packet(
-        self, any_packet: AnyPacket, writer: asyncio.StreamWriter
+        self, any_packet: AnyPacket, channel: ServiceChannel
     ):
         """Process an ears packet"""
-        packet = self.__check_ears_packet(any_packet, writer)
+        packet = self.__check_ears_packet(any_packet, channel)
         if packet:
             if "left" in packet:
                 self.ears["left"] = packet["left"]
@@ -478,10 +482,10 @@ class Nabd:
                 await self.nabio.move_ears(
                     self.ears["left"], self.ears["right"]
                 )
-            self.write_response_packet(packet, STATUS_OK, writer)
+            self.write_response_packet(packet, STATUS_OK, channel)
 
     def __check_ears_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ) -> Optional[EarsPacket]:
         assert packet["type"] == "ears"
         if "left" in packet and not isinstance(packet["left"], int):
@@ -490,7 +494,7 @@ class Nabd:
                 status_error_malformed_packet(
                     "Invalid left slot, expected an int"
                 ),
-                writer,
+                channel,
             )
             return None
         if "right" in packet and not isinstance(packet["right"], int):
@@ -499,7 +503,7 @@ class Nabd:
                 status_error_malformed_packet(
                     "Invalid right slot, expected an int"
                 ),
-                writer,
+                channel,
             )
             return None
         if "request_id" in packet and not isinstance(
@@ -510,7 +514,7 @@ class Nabd:
                 status_error_malformed_packet(
                     "Invalid request_id slot, expected a string"
                 ),
-                writer,
+                channel,
             )
             return None
         if "event" in packet and not isinstance(packet["event"], bool):
@@ -519,38 +523,38 @@ class Nabd:
                 status_error_malformed_packet(
                     "Invalid event slot, expected a bool"
                 ),
-                writer,
+                channel,
             )
             return None
         return cast(EarsPacket, packet)
 
     async def process_command_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a command packet"""
-        await self.process_perform_packet("sequence", packet, writer)
+        await self.process_perform_packet("sequence", packet, channel)
 
     async def process_message_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a message packet"""
-        await self.process_perform_packet("body", packet, writer)
+        await self.process_perform_packet("body", packet, channel)
 
     async def process_perform_packet(
         self,
         slot: str,
         any_packet: AnyPacket,
-        writer: asyncio.StreamWriter,
+        channel: ServiceChannel,
     ):
         assert self.loop is not None
-        packet = self.__check_perform_packet(any_packet, slot, writer)
+        packet = self.__check_perform_packet(any_packet, slot, channel)
         if packet:
-            if self.interactive_service_writer == writer:
+            if self.interactive_channel == channel:
                 # interactive => play command immediately, asynchronously
-                self.loop.create_task(self.perform(packet, writer))
+                self.loop.create_task(self.perform(packet, channel))
             else:
                 async with self.idle_cv:
-                    self.idle_queue.append((packet, writer))
+                    self.idle_queue.append((packet, channel))
                     self.idle_cv.notify()
                 logging.info(
                     f"nabd: command queued while rabbit is asleep: "
@@ -558,19 +562,19 @@ class Nabd:
                 )
 
     def __check_perform_packet(
-        self, packet: AnyPacket, slot: str, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, slot: str, channel: ServiceChannel
     ) -> Optional[Union[CommandPacket, MessagePacket]]:
         if slot in packet:
             return cast(Union[CommandPacket, MessagePacket], packet)
         self.write_response_packet(
             packet,
             status_error_malformed_packet(f"Missing required {slot} slot"),
-            writer,
+            channel,
         )
         return None
 
     async def process_cancel_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a cancel packet"""
         if "request_id" in packet:
@@ -586,7 +590,7 @@ class Nabd:
                             "NotCancelable",
                             "Playing command is not cancelable",
                         ),
-                        writer,
+                        channel,
                     )
             else:
                 self.write_response_packet(
@@ -595,7 +599,7 @@ class Nabd:
                         "NotPlaying",
                         "Cancel packet does not refer to running command",
                     ),
-                    writer,
+                    channel,
                 )
         else:
             self.write_response_packet(
@@ -603,70 +607,70 @@ class Nabd:
                 status_error_malformed_packet(
                     "Missing required request_id slot"
                 ),
-                writer,
+                channel,
             )
 
     async def process_wakeup_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a wakeup packet"""
         assert packet["type"] == "wakeup"
-        self.write_response_packet(packet, STATUS_OK, writer)
+        self.write_response_packet(packet, STATUS_OK, channel)
         if self.state == State.ASLEEP:
             await self.transition_to(State.IDLE)
 
     async def process_sleep_packet(
-        self, any_packet: AnyPacket, writer: asyncio.StreamWriter
+        self, any_packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a sleep packet"""
         assert any_packet["type"] == "sleep"
         packet = cast(SleepPacket, any_packet)
         if self.state == State.ASLEEP:
-            self.write_response_packet(packet, STATUS_OK, writer)
+            self.write_response_packet(packet, STATUS_OK, channel)
         else:
             async with self.idle_cv:
-                self.idle_queue.append((packet, writer))
+                self.idle_queue.append((packet, channel))
                 self.idle_cv.notify()
 
     async def process_mode_packet(
-        self, any_packet: AnyPacket, writer: asyncio.StreamWriter
+        self, any_packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a mode packet"""
-        packet = self.__check_mode_packet(any_packet, writer)
+        packet = self.__check_mode_packet(any_packet, channel)
         if not packet:
             return
         if packet["mode"] == "interactive":
-            if writer == self.interactive_service_writer:
+            if channel == self.interactive_channel:
                 if "events" in packet:
                     self.interactive_service_events = packet["events"]
                 else:
                     self.interactive_service_events = ["ears", "button"]
-                self.write_response_packet(packet, STATUS_OK, writer)
-            elif self.interactive_service_writer is not None:
+                self.write_response_packet(packet, STATUS_OK, channel)
+            elif self.interactive_channel is not None:
                 self.write_response_packet(
                     packet,
                     status_error(
                         "AlreadyInInteractiveMode",
                         "Nabd is already in interactive mode",
                     ),
-                    writer,
+                    channel,
                 )
             else:
                 async with self.idle_cv:
-                    self.idle_queue.append((packet, writer))
+                    self.idle_queue.append((packet, channel))
                     self.idle_cv.notify()
         else:  # packet["mode"] == "idle":
             if "events" in packet:
-                self.service_writers[writer] = packet["events"]
+                channel.events = packet["events"]
             else:
-                self.service_writers[writer] = []
-            if writer == self.interactive_service_writer:
+                channel.events = []
+            if channel == self.interactive_channel:
                 # exit interactive mode.
                 await self.exit_interactive()
-            self.write_response_packet(packet, STATUS_OK, writer)
+            self.write_response_packet(packet, STATUS_OK, channel)
 
     def __check_mode_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ) -> Optional[ModePacket]:
         if "mode" in packet:
             if packet["mode"] in ("interactive", "idle"):
@@ -677,19 +681,19 @@ class Nabd:
                 status_error_malformed_packet(
                     "Mode packet with unknown mode slot"
                 ),
-                writer,
+                channel,
             )
         else:
             logging.debug(f"malformed mode packet from service: {packet}")
             self.write_response_packet(
                 packet,
                 status_error_malformed_packet("Missing mode slot"),
-                writer,
+                channel,
             )
         return None
 
     async def process_gestalt_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a gestalt packet"""
         proc = subprocess.Popen(
@@ -699,7 +703,7 @@ class Nabd:
         proc.wait()
         response: ResponseGestaltPacketProto = {
             "state": self.state.value,
-            "connections": len(self.service_writers),
+            "connections": len(self.service_channels),
             "hardware": await self.nabio.gestalt(),
         }
         if self.playing_request_id is not None:
@@ -714,10 +718,10 @@ class Nabd:
             results = proc.stdout.readlines()
             uptime = int(results[0].strip())
             response["uptime"] = uptime
-        self.write_response_packet(packet, response, writer)
+        self.write_response_packet(packet, response, channel)
 
     async def process_config_update_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a config_update packet"""
         if "service" not in packet:
@@ -726,28 +730,28 @@ class Nabd:
                 status_error_malformed_packet(
                     "Config update packet with missing service slot"
                 ),
-                writer,
+                channel,
             )
         else:
             if packet["service"] == "nabd":
                 await self.reload_config()
-                self.write_response_packet(packet, STATUS_OK, writer)
+                self.write_response_packet(packet, STATUS_OK, channel)
 
     async def process_test_packet(
-        self, any_packet: AnyPacket, writer: asyncio.StreamWriter
+        self, any_packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a test packet (for hardware tests)"""
-        packet = self.__check_test_packet(any_packet, writer)
+        packet = self.__check_test_packet(any_packet, channel)
         if packet:
             if self.state == State.ASLEEP:
-                await self.do_process_test_packet(packet, writer)
+                await self.do_process_test_packet(packet, channel)
             else:
                 async with self.idle_cv:
-                    self.idle_queue.append((packet, writer))
+                    self.idle_queue.append((packet, channel))
                     self.idle_cv.notify()
 
     def __check_test_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ) -> Optional[TestPacket]:
         if "test" in packet:
             return cast(TestPacket, packet)
@@ -757,12 +761,12 @@ class Nabd:
             status_error_malformed_packet(
                 "Test packet with missing test slot"
             ),
-            writer,
+            channel,
         )
         return None
 
     async def do_process_test_packet(
-        self, packet: TestPacket, writer: asyncio.StreamWriter
+        self, packet: TestPacket, channel: ServiceChannel
     ):
         response: ResponsePacketProto
         result = await self.nabio.test(packet["test"])
@@ -770,23 +774,23 @@ class Nabd:
             response = STATUS_OK
         else:
             response = STATUS_FAILURE
-        self.write_response_packet(packet, response, writer)
+        self.write_response_packet(packet, response, channel)
 
     async def process_rfid_write_packet(
-        self, any_packet: AnyPacket, writer: asyncio.StreamWriter
+        self, any_packet: AnyPacket, channel: ServiceChannel
     ):
         """Process a rfid_write packet"""
-        packet = self.__check_rfid_write_packet(any_packet, writer)
+        packet = self.__check_rfid_write_packet(any_packet, channel)
         if packet is not None:
             if self.state == State.ASLEEP:
-                await self.do_process_rfid_write_packet(packet, writer)
+                await self.do_process_rfid_write_packet(packet, channel)
             else:
                 async with self.idle_cv:
-                    self.idle_queue.append((packet, writer))
+                    self.idle_queue.append((packet, channel))
                     self.idle_cv.notify()
 
     async def do_process_rfid_write_packet(
-        self, packet: RfidWritePacket, writer: asyncio.StreamWriter
+        self, packet: RfidWritePacket, channel: ServiceChannel
     ) -> None:
         """Process a rfid_write packet"""
         if self.nabio.rfid is None:
@@ -795,7 +799,7 @@ class Nabd:
                 status_error(
                     "NFCException", "Unknown exception while writing NFC tag"
                 ),
-                writer,
+                channel,
             )
             return
         tech = TagTechnology[packet["tech"].upper()]
@@ -819,7 +823,7 @@ class Nabd:
             )
             if success:
                 self.write_response_packet(
-                    packet, {"status": "ok", "uid": packet["uid"]}, writer
+                    packet, {"status": "ok", "uid": packet["uid"]}, channel
                 )
             else:
                 self.write_response_packet(
@@ -828,7 +832,7 @@ class Nabd:
                         "NFCWriteError",
                         f"NFC write failed for tag (uid={str(packet['uid'])})",
                     ),
-                    writer,
+                    channel,
                 )
         except asyncio.TimeoutError:
             self.write_response_packet(
@@ -837,7 +841,7 @@ class Nabd:
                     "status": "timeout",
                     "message": "NFC write timed out (NFC tag not found?)",
                 },
-                writer,
+                channel,
             )
         except Exception as err:
             logging.error("Unknown exception with NFC write")
@@ -848,13 +852,13 @@ class Nabd:
                     type(err).__name__,
                     "Unknown exception while writing NFC tag",
                 ),
-                writer,
+                channel,
             )
         finally:
             self.nabio.rfid_done_feedback()
 
     def __check_rfid_write_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ) -> Optional[RfidWritePacket]:
         if (
             "uid" in packet
@@ -870,15 +874,15 @@ class Nabd:
             status_error_malformed_packet(
                 "rfid_write packet with missing or invalid slots"
             ),
-            writer,
+            channel,
         )
         return None
 
     async def process_os_shutdown_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ):
         assert packet["type"] == "shutdown"
-        self.write_response_packet(packet, STATUS_OK, writer)
+        self.write_response_packet(packet, STATUS_OK, channel)
         if "mode" in packet:
             perform_reboot = packet["mode"] == "reboot"
         else:
@@ -886,7 +890,7 @@ class Nabd:
         asyncio.ensure_future(self._shutdown(perform_reboot))
 
     async def process_packet(
-        self, packet: AnyPacket, writer: asyncio.StreamWriter
+        self, packet: AnyPacket, channel: ServiceChannel
     ):
         """
         Process a packet from a service
@@ -909,18 +913,18 @@ class Nabd:
             "shutdown": self.process_os_shutdown_packet,
         }
         if packet["type"] in processors:
-            await processors[packet["type"]](packet, writer)
+            await processors[packet["type"]](packet, channel)
         else:
             self.write_response_packet(
                 packet,
                 status_error_malformed_packet(
                     f"Packet of unknown type ({str(packet['type'])})"
                 ),
-                writer,
+                channel,
             )
 
-    def write_packet(self, response: NabdPacket, writer: asyncio.StreamWriter):
-        writer.write((json.dumps(response) + "\r\n").encode("utf8"))
+    def write_packet(self, response: NabdPacket, channel: ServiceChannel):
+        channel.incoming.put_nowait(response)
 
     def _test_event_mask(self, event_type: str, events: List[str]) -> bool:
         matching = event_type in events
@@ -930,35 +934,35 @@ class Nabd:
         return matching
 
     def broadcast_event(self, event_type, response: EventPacket):
-        if self.interactive_service_writer is None:
+        if self.interactive_channel is None:
             logging.info(f"broadcast event: {event_type}")
-            for sw, events in self.service_writers.items():
-                if self._test_event_mask(event_type, events):
-                    self.write_packet(response, sw)
+            for channel in self.service_channels:
+                if self._test_event_mask(event_type, channel.events):
+                    self.write_packet(response, channel)
         elif self._test_event_mask(
             event_type, self.interactive_service_events
         ):
             logging.info(
                 f"send event to interactive service: {event_type}"
             )
-            self.write_packet(response, self.interactive_service_writer)
+            self.write_packet(response, self.interactive_channel)
 
     def write_response_cancelable(
         self,
         original_packet: Union[CommandPacket, MessagePacket],
-        writer: asyncio.StreamWriter,
+        channel: ServiceChannel,
     ):
         if self.playing_canceled:
             status = STATUS_CANCELED
         else:
             status = STATUS_OK
-        self.write_response_packet(original_packet, status, writer)
+        self.write_response_packet(original_packet, status, channel)
 
     def write_response_packet(
         self,
         original_packet: Union[None, AnyPacket, ServicePacket],
         template: ResponsePacketProto,
-        writer: asyncio.StreamWriter,
+        channel: ServiceChannel,
     ):
         response_packet: AnyPacket = cast(AnyPacket, template)
         if original_packet is not None and "request_id" in original_packet:
@@ -966,13 +970,13 @@ class Nabd:
                 ServiceRequestPacket, original_packet
             )["request_id"]
         response_packet["type"] = "response"
-        self.write_packet(cast(ResponsePacket, response_packet), writer)
+        self.write_packet(cast(ResponsePacket, response_packet), channel)
 
     def broadcast_state(self):
-        for sw in self.service_writers:
-            self.write_state_packet(sw)
+        for channel in self.service_channels:
+            self.write_state_packet(channel)
 
-    def write_state_packet(self, writer: asyncio.StreamWriter):
+    def write_state_packet(self, channel: ServiceChannel):
         packet: StatePacket = {
             "type": "state",
             "state": self.state.value,
@@ -985,14 +989,27 @@ class Nabd:
             "left": self.ears["left"],
             "right": self.ears["right"],
         }
-        self.write_packet(packet, writer)
+        self.write_packet(packet, channel)
 
     # Handle service through TCP/IP protocol
     async def service_loop(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ):
-        self.write_state_packet(writer)
-        self.service_writers[writer] = []
+        channel = ServiceChannel(asyncio.Queue(), name=f"tcp:{id(writer)}")
+        self.service_channels.add(channel)
+        channel.events = []
+        self.write_state_packet(channel)
+
+        async def tcp_forward():
+            try:
+                while True:
+                    packet = await channel.incoming.get()
+                    data = json.dumps(packet) + "\r\n"
+                    writer.write(data.encode("utf8"))
+            except (RuntimeError, asyncio.CancelledError):
+                pass
+
+        forward_task = asyncio.create_task(tcp_forward())
         logging.info("nabd: service connected, state=%s", self.state.value)
         try:
             while not reader.at_eof():
@@ -1009,17 +1026,17 @@ class Nabd:
                                 status_error_malformed_packet(
                                     "Missing type slot"
                                 ),
-                                writer,
+                                channel,
                             )
                         else:
-                            await self.process_packet(packet, writer)
+                            await self.process_packet(packet, channel)
                     except UnicodeDecodeError as e:
                         logging.debug(f"Unicode Error {e} with service packet")
                         logging.debug(f"{packet}")
                         self.write_response_packet(
                             None,
                             status_error("UnicodeDecodeError", str(e)),
-                            writer,
+                            channel,
                         )
                     except json.decoder.JSONDecodeError as e:
                         logging.debug(f"JSON Error {e} with service packet")
@@ -1027,7 +1044,7 @@ class Nabd:
                         self.write_response_packet(
                             None,
                             status_error("JSONDecodeError", str(e)),
-                            writer,
+                            channel,
                         )
             writer.close()
             await writer.wait_closed()
@@ -1038,15 +1055,44 @@ class Nabd:
         except Exception:
             logging.debug(traceback.format_exc())
         finally:
+            forward_task.cancel()
             logging.info("nabd: service disconnected")
-            del self.service_writers[writer]
-            if self.interactive_service_writer == writer:
+            self.service_channels.discard(channel)
+            if self.interactive_channel == channel:
                 await self.exit_interactive()
+
+    async def _queue_service_loop(
+        self, outgoing: asyncio.Queue, channel: ServiceChannel
+    ):
+        """Read packets from a service's outgoing queue and process them."""
+        logging.info(f"nabd: queue service connected: {channel.name}")
+        self.write_state_packet(channel)
+        channel.events = []
+        try:
+            while True:
+                packet = await outgoing.get()
+                await self.process_packet(packet, channel)
+        except Exception:
+            logging.debug(traceback.format_exc())
+        finally:
+            logging.info(f"nabd: queue service disconnected: {channel.name}")
+            self.service_channels.discard(channel)
+            if self.interactive_channel == channel:
+                await self.exit_interactive()
+
+    def register_service(self, name: str, outgoing: asyncio.Queue) -> ServiceChannel:
+        """Register a queue-based service."""
+        channel = ServiceChannel(asyncio.Queue(), name=name)
+        self.service_channels.add(channel)
+        channel.events = []
+        loop = asyncio.get_event_loop()
+        loop.create_task(self._queue_service_loop(outgoing, channel))
+        return channel
 
     async def perform(
         self,
         packet: Union[CommandPacket, MessagePacket],
-        writer: asyncio.StreamWriter,
+        channel: ServiceChannel,
     ):
         if "request_id" in packet:
             self.playing_request_id = packet["request_id"]
@@ -1061,7 +1107,7 @@ class Nabd:
             if "signature" in packet:
                 signature = packet["signature"]
             await self.nabio.play_message(signature, packet["body"])
-        self.write_response_cancelable(packet, writer)
+        self.write_response_cancelable(packet, channel)
         self.playing_request_id = None
         self.playing_cancelable = False
 
@@ -1080,7 +1126,7 @@ class Nabd:
         elif (
             button_event == "click"
             and (
-                self.interactive_service_writer is None
+                self.interactive_channel is None
                 or "button" not in self.interactive_service_events
             )
             and self.playing_cancelable
@@ -1149,7 +1195,7 @@ class Nabd:
             os.system(sytemCommandStr)
 
     def ears_callback(self, ear):
-        if self.interactive_service_writer:
+        if self.interactive_channel:
             # Cancel any previously registered timer
             if self._ears_moved_task:
                 self._ears_moved_task.cancel()
@@ -1162,7 +1208,7 @@ class Nabd:
                 now = time.time()
                 self.write_packet(
                     {"type": "ear_event", "ear": ear_str, "time": now},
-                    self.interactive_service_writer,
+                    self.interactive_channel,
                 )
         else:
             # Wait a little bit for user to continue moving the ears
@@ -1174,7 +1220,7 @@ class Nabd:
 
     async def _ears_moved(self):
         await asyncio.sleep(Nabd.EAR_MOVEMENT_TIMEOUT)
-        if self.interactive_service_writer is None:
+        if self.interactive_channel is None:
             (left, right) = await self.nabio.detect_ears_positions()
             self.ears["left"] = left
             self.ears["right"] = right
@@ -1257,30 +1303,12 @@ class Nabd:
         self.nabio.bind_ears_event(self.loop, self.ears_callback)
         self.nabio.bind_rfid_event(self.loop, self.rfid_callback)
         idle_task = self.loop.create_task(self.idle_worker_loop())
-        if os.environ.get("LISTEN_PID", None) == str(os.getpid()):
-            server_task = self.loop.create_task(
-                asyncio.start_server(
-                    self.service_loop,
-                    sock=socket.fromfd(
-                        Nabd.SYSTEMD_ACTIVATED_FD,
-                        socket.AF_INET,
-                        socket.SOCK_STREAM,
-                    ),
-                )
-            )
-        else:
-            server_task = self.loop.create_task(
-                asyncio.start_server(
-                    self.service_loop, NabService.HOST, NabService.PORT_NUMBER
-                )
-            )
         try:
             self.loop.run_forever()
-            for t in [idle_task, server_task]:
-                if t.done():
-                    t_ex = t.exception()
-                    if t_ex:
-                        raise t_ex
+            if idle_task.done():
+                ex = idle_task.exception()
+                if ex:
+                    raise ex
         except KeyboardInterrupt:
             pass
         except Exception:
@@ -1289,11 +1317,6 @@ class Nabd:
             logging.critical(error_msg)
         finally:
             self.loop.run_until_complete(self.stop_idle_worker())
-            server = server_task.result()
-            server.close()
-            for writer in self.service_writers.copy():
-                writer.close()
-                self.loop.run_until_complete(writer.wait_closed())
             tasks = asyncio.all_tasks(self.loop)
             for t in [t for t in tasks if not (t.done() or t.cancelled())]:
                 # give canceled tasks the last chance to run

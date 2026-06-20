@@ -267,9 +267,7 @@ class NabMqttd(NabService):
                 pos = int(payload.strip())
                 if 0 <= pos <= 16:
                     asyncio.run_coroutine_threadsafe(
-                        self._send_to_nabd(
-                            json.dumps({"type": "ears", "left": pos})
-                        ),
+                        self._send_to_nabd({"type": "ears", "left": pos}),
                         loop,
                     )
                     base = self._get_topic("")
@@ -283,9 +281,7 @@ class NabMqttd(NabService):
                 pos = int(payload.strip())
                 if 0 <= pos <= 16:
                     asyncio.run_coroutine_threadsafe(
-                        self._send_to_nabd(
-                            json.dumps({"type": "ears", "right": pos})
-                        ),
+                        self._send_to_nabd({"type": "ears", "right": pos}),
                         loop,
                     )
                     base = self._get_topic("")
@@ -298,11 +294,11 @@ class NabMqttd(NabService):
             self._handle_leds_set(payload, loop)
         elif topic.endswith("/action/sleep"):
             asyncio.run_coroutine_threadsafe(
-                self._send_to_nabd(json.dumps({"type": "sleep"})), loop
+                self._send_to_nabd({"type": "sleep"}), loop
             )
         elif topic.endswith("/action/wake"):
             asyncio.run_coroutine_threadsafe(
-                self._send_to_nabd(json.dumps({"type": "wakeup"})), loop
+                self._send_to_nabd({"type": "wakeup"}), loop
             )
         elif topic.endswith("/action/weather"):
             asyncio.run_coroutine_threadsafe(
@@ -327,12 +323,12 @@ class NabMqttd(NabService):
         elif topic.endswith("/mode/set"):
             mode = payload.strip()
             asyncio.run_coroutine_threadsafe(
-                self._send_to_nabd(json.dumps({"type": "mode", "mode": mode})),
+                self._send_to_nabd({"type": "mode", "mode": mode}),
                 loop,
             )
         elif "/command/" in topic:
             asyncio.run_coroutine_threadsafe(
-                self._send_to_nabd(payload), loop
+                self._send_to_nabd(json.loads(payload)), loop
             )
 
     def _handle_leds_set(self, payload, loop):
@@ -362,30 +358,19 @@ class NabMqttd(NabService):
 
     def _send_choreo(self, choreo, loop):
         choreo_b64 = _choreography_to_base64(choreo)
-        packet = json.dumps(
-            {
-                "type": "command",
-                "sequence": [
-                    {
-                        "choreography": "data:application/"
-                        "x-nabaztag-mtl-choreography;base64,"
-                        + choreo_b64
-                    }
-                ],
-            }
-        )
+        packet = {
+            "type": "command",
+            "sequence": [
+                {
+                    "choreography": "data:application/"
+                    "x-nabaztag-mtl-choreography;base64,"
+                    + choreo_b64
+                }
+            ],
+        }
         asyncio.run_coroutine_threadsafe(
             self._send_to_nabd(packet), loop
         )
-
-    async def _send_to_nabd(self, payload: str):
-        if self.writer is None:
-            return
-        try:
-            self.writer.write((payload + "\r\n").encode("utf-8"))
-            await self.writer.drain()
-        except Exception as e:
-            logging.error(f"Failed to send to nabd: {e}")
 
     async def _trigger_service(self, service_name: str, type: str):
         try:
@@ -436,20 +421,18 @@ class NabMqttd(NabService):
         if url:
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=5)
-            packet = (
-                '{"type":"message",'
-                '"request_id":"nabradio",'
-                '"signature":{"audio":["nabradio/*.mp3"]},'
-                '"body":[{"audio":["'
-                + url
-                + '"]}],'
-                '"expiration":"' + expiration.isoformat() + '"}\r\n'
-            )
+            packet = {
+                "type": "message",
+                "request_id": "nabradio",
+                "signature": {"audio": ["nabradio/*.mp3"]},
+                "body": [{"audio": [url]}],
+                "expiration": expiration.isoformat(),
+            }
             await self._send_to_nabd(packet)
             self._radio_active = True
 
     async def _stop_radio(self):
-        packet = '{"type":"cancel","request_id":"nabradio"}\r\n'
+        packet = {"type": "cancel", "request_id": "nabradio"}
         await self._send_to_nabd(packet)
         self._radio_active = False
 

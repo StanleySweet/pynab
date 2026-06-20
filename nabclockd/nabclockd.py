@@ -81,14 +81,13 @@ class NabClockd(nabservice.NabService):
             audio = f"tts:{text}"
         else:
             audio = "nabclockd/" + str(hour) + "/*.mp3"
-        packet = (
-            '{"type":"message",'
-            '"signature":{"audio":["nabclockd/signature.mp3"]},'
-            '"body":[{"audio":["' + audio + '"]}],'
-            '"expiration":"' + expiration.isoformat() + '"}\r\n'
-        )
-        self.writer.write(packet.encode("utf8"))
-        await self.writer.drain()
+        packet = {
+            "type": "message",
+            "signature": {"audio": ["nabclockd/signature.mp3"]},
+            "body": [{"audio": [audio]}],
+            "expiration": expiration.isoformat(),
+        }
+        await self._send_to_nabd(packet)
 
     def clock_response(self, now: datetime.datetime) -> List[str]:
         response = []
@@ -205,19 +204,13 @@ class NabClockd(nabservice.NabService):
                                         # that is sent after the sound to
                                         # trigger a loop-cv-notify, so skip it
                                         self.ignore_next_idle_packet = True
-                                        packet = (
-                                            '{"type":"message",'
-                                            '"body":[{"audio":["sleep/*.mp3"],'
-                                            '"choreography":null}],'
-                                            '"request_id":"sleep_sound"}\r\n'
-                                        )
-                                        self.writer.write(
-                                            packet.encode("utf8")
-                                        )
-                                        await self.writer.drain()
+                                        await self._send_to_nabd({
+                                            "type": "message",
+                                            "body": [{"audio": ["sleep/*.mp3"], "choreography": None}],
+                                            "request_id": "sleep_sound",
+                                        })
 
-                                self.writer.write(b'{"type":"sleep"}\r\n')
-                                await self.writer.drain()
+                                await self._send_to_nabd({"type": "sleep"})
                                 self.asleep = None
 
                             elif r == "wakeup":
@@ -228,17 +221,13 @@ class NabClockd(nabservice.NabService):
                                     # that is sent after the sound to
                                     # trigger a loop-cv-notify, so skip it
                                     self.ignore_next_idle_packet = True
-                                    packet = (
-                                        '{"type":"message",'
-                                        '"body":[{"audio":["wakeup/*.mp3"],'
-                                        '"choreography":null}],'
-                                        '"request_id":"wakeup_sound"}\r\n'
-                                    )
-                                    self.writer.write(packet.encode("utf8"))
-                                    await self.writer.drain()
+                                    await self._send_to_nabd({
+                                        "type": "message",
+                                        "body": [{"audio": ["wakeup/*.mp3"], "choreography": None}],
+                                        "request_id": "wakeup_sound",
+                                    })
 
-                                self.writer.write(b'{"type":"wakeup"}\r\n')
-                                await self.writer.drain()
+                                await self._send_to_nabd({"type": "wakeup"})
                                 self.asleep = None
                             elif r == "chime":
                                 await self.chime(now.hour)

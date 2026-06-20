@@ -7,7 +7,6 @@ import logging
 import os
 import signal
 import sys
-import time
 import traceback
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -30,8 +29,8 @@ class NabService(ABC):
             settings.configure(type(self).__name__.lower())
         else:
             settings.configure(type(self).__name__.lower(), orm=False, translations=translations)
-        self.reader = None
-        self.writer = None
+        self._outgoing: Optional[asyncio.Queue] = None
+        self._incoming: Optional[asyncio.Queue] = None
         self.loop = None
         self.running = True
         self._nabd_asleep = False
@@ -52,9 +51,17 @@ class NabService(ABC):
     async def process_nabd_packet(self, packet: NabdPacket) -> None:
         pass
 
+    async def _send_to_nabd(self, packet_dict: dict) -> None:
+        """Send a packet dict to nabd."""
+        self._outgoing.put_nowait(packet_dict)
+
+    async def _receive_from_nabd(self) -> dict:
+        """Receive a packet dict from nabd."""
+        return await self._incoming.get()
+
     async def send_wakeup(self):
         """Send a wakeup packet to nabd to wake the rabbit from sleep."""
-        self.writer.write(b'{"type":"wakeup"}\r\n')
+        await self._send_to_nabd({"type": "wakeup"})
 
     async def client_loop(self):
         try:
@@ -63,42 +70,36 @@ class NabService(ABC):
             service_dir = os.path.dirname(inspect.getfile(self.__class__))
             asr_support = os.path.isdir(os.path.join(service_dir, "nlu"))
             rfid_support = False
-            events = []
             if hasattr(package, "NABAZTAG_RFID_APPLICATION_ID"):
                 rfid_support = True
+            events = []
             if hasattr(package, "NABAZTAG_EVENTS_SUBSCRIPTION"):
                 events = [
-                    json.dumps(event)
-                    for event in package.NABAZTAG_EVENTS_SUBSCRIPTION
+                    event for event in package.NABAZTAG_EVENTS_SUBSCRIPTION
                 ]
-            if events != [] or asr_support or rfid_support:
+            if events or asr_support or rfid_support:
                 service_name = self.__class__.__name__.lower()
                 if asr_support:
-                    events.append(f'"asr/{service_name}"')
+                    events.append(f"asr/{service_name}")
                 if rfid_support:
-                    events.append(f'"rfid/{service_name}"')
-                events_str = ",".join(events)
-                idle_packet = (
-                    '{"type":"mode","mode":"idle","events":['
-                    + events_str
-                    + "]}\r\n"
-                )
-                self.writer.write(idle_packet.encode("utf8"))
-            while self.running and not self.reader.at_eof():
-                line = await self.reader.readline()
-                if line != b"" and line != b"\r\n":
-                    try:
-                        packet = json.loads(line.decode("utf8"))
-                        logging.debug(f"process nabd packet: {packet}")
-                        await self.process_nabd_packet(
-                            cast(NabdPacket, packet)
-                        )
-                    except json.decoder.JSONDecodeError as e:
-                        logging.error(
-                            f"Invalid JSON packet from nabd: {line}\n{e}"
-                        )
-            self.writer.close()
-            await self.writer.wait_closed()
+                    events.append(f"rfid/{service_name}")
+                await self._send_to_nabd({
+                    "type": "mode",
+                    "mode": "idle",
+                    "events": events,
+                })
+            while self.running:
+                try:
+                    packet = await self._receive_from_nabd()
+                    logging.debug(f"process nabd packet: {packet}")
+                    await self.process_nabd_packet(
+                        cast(NabdPacket, packet)
+                    )
+                except (json.decoder.JSONDecodeError, EOFError) as e:
+                    logging.error(
+                        f"Invalid packet from nabd: {e}"
+                    )
+                    break
         except KeyboardInterrupt:
             pass
         finally:
@@ -106,30 +107,9 @@ class NabService(ABC):
                 await self.stop_service_loop()
             self.loop.stop()
 
-    MAX_RETRY = 10
-
     def connect(self):
         self.loop = asyncio.get_event_loop()
-        self._do_connect(NabService.MAX_RETRY)
         self.loop.create_task(self.client_loop())
-
-    def _do_connect(self, retry_count: int) -> None:
-        connection = asyncio.open_connection(
-            host=NabService.HOST, port=NabService.PORT_NUMBER
-        )
-        try:
-            (reader, writer) = self.loop.run_until_complete(connection)
-            self.reader = reader
-            self.writer = writer
-        except ConnectionRefusedError:
-            if retry_count == 0:
-                print("Could not connect to server. Is nabd running?")
-                logging.critical(
-                    "Could not connect to server. Is nabd running?"
-                )
-                exit(1)
-            time.sleep(1)
-            self._do_connect(retry_count - 1)
 
     def run(self):
         self.connect()
@@ -144,7 +124,6 @@ class NabService(ABC):
         except KeyboardInterrupt:
             pass
         finally:
-            self.writer.close()
             self.loop.run_until_complete(self.stop_service_loop())
             tasks = asyncio.all_tasks(self.loop)
             # give canceled tasks the last chance to run
@@ -517,20 +496,11 @@ class NabInfoService(NabRecurrentService, ABC):
         info_data = await self._do_fetch_info_data(config)
         info_animation = self.get_animation(info_data)
         service_name = self.__class__.__name__.lower()
+        info_packet: dict = {"type": "info", "info_id": service_name}
         if info_animation is not None:
-            info_packet = (
-                '{"type":"info","info_id":"'
-                + service_name
-                + '","animation":'
-                + info_animation
-                + "}\r\n"
-            )
-        else:
-            info_packet = (
-                '{"type":"info","info_id":"' + service_name + '"}\r\n'
-            )
+            info_packet["animation"] = json.loads(info_animation)
         await self.send_wakeup()
-        self.writer.write(info_packet.encode("utf8"))
+        await self._send_to_nabd(info_packet)
         if type != "info":
             await self.perform_additional(
                 expiration_date, type, info_data, config

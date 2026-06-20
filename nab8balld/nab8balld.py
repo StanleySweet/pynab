@@ -59,19 +59,19 @@ class Nab8Balld(NabService):
     async def setup_listener(self):
         config = await self.__config()
         if config.get("enabled"):
-            packet = (
-                ""
-                '{"type":"mode","mode":"idle",'
-                '"events":["button","asr/nab8balld","rfid/nab8balld"],'
-                '"request_id":"idle-button"}\r\n'
-            )
+            await self._send_to_nabd({
+                "type": "mode",
+                "mode": "idle",
+                "events": ["button", "asr/nab8balld", "rfid/nab8balld"],
+                "request_id": "idle-button",
+            })
         else:
-            packet = (
-                '{"type":"mode","mode":"idle",'
-                '"events":["asr/nab8balld","rfid/nab8balld"],'
-                '"request_id":"idle-disabled"}\r\n'
-            )
-        self.writer.write(packet.encode("utf8"))
+            await self._send_to_nabd({
+                "type": "mode",
+                "mode": "idle",
+                "events": ["asr/nab8balld", "rfid/nab8balld"],
+                "request_id": "idle-disabled",
+            })
 
     async def perform(self, lang, *, force=False):
         if not force and self._nabd_asleep:
@@ -94,13 +94,12 @@ class Nab8Balld(NabService):
             else:
                 lang_prefix = lang + "/"
             path = f"{lang_prefix}nab8balld/answers/*.mp3"
-        packet = (
-            f'{{"type":"message",'
-            f'"body":[{{"audio":["{path}"]}}],'
-            f'"request_id":"play-answer"}}\r\n'
-        )
-        self.writer.write(packet.encode("utf8"))
-        await self.writer.drain()
+        packet = {
+            "type": "message",
+            "body": [{"audio": [path]}],
+            "request_id": "play-answer",
+        }
+        await self._send_to_nabd(packet)
 
     async def process_nabd_packet(self, packet: NabdPacket):
         if packet["type"] == "state":
@@ -132,36 +131,31 @@ class Nab8Balld(NabService):
 
     async def enter_interactive(self):
         logging.info("nab8balld: entering interactive mode")
-        packet = (
-            '{"type":"mode","mode":"interactive",'
-            '"events":["button"],'
-            '"request_id":"set-interactive"}\r\n'
-        )
-        self.writer.write(packet.encode("utf8"))
-        await self.writer.drain()
+        await self._send_to_nabd({
+            "type": "mode",
+            "mode": "interactive",
+            "events": ["button"],
+            "request_id": "set-interactive",
+        })
 
     async def entered_interactive(self):
         logging.info("nab8balld: interactive mode confirmed")
         self._interactive = True
-        resp = (
-            '{"type":"command",'
-            '"sequence":[{"audio":["nab8balld/listen.mp3"],'
-            '"choreography":"data:application/x-nabaztag-mtl-choreography;'
-            'base64,AAcA/wD/AAAABwEAAAAAAAAHAgAAAAAAAAcDAAAAAAA="'
-            "}],"
-            '"request_id":"play-listen"}\r\n'
-        )
-        self.writer.write(resp.encode("utf8"))
-        await self.writer.drain()
+        await self._send_to_nabd({
+            "type": "command",
+            "sequence": [{"audio": ["nab8balld/listen.mp3"],
+                           "choreography": "data:application/x-nabaztag-mtl-choreography;base64,"
+                                          "AAcA/wD/AAAABwEAAAAAAAAHAgAAAAAAAAcDAAAAAAA="}],
+            "request_id": "play-listen",
+        })
 
     async def exit_interactive(self):
         logging.info("nab8balld: exiting interactive mode")
-        packet = (
-            '{"type":"command",'
-            '"sequence":[{"audio":["nab8balld/acquired.mp3"]}],'
-            '"request_id":"play-acquired"}\r\n'
-        )
-        self.writer.write(packet.encode("utf8"))
+        await self._send_to_nabd({
+            "type": "command",
+            "sequence": [{"audio": ["nab8balld/acquired.mp3"]}],
+            "request_id": "play-acquired",
+        })
         await self.perform(None)
         self._interactive = False
         await self.setup_listener()
@@ -206,7 +200,6 @@ class Nab8Balld(NabService):
             pass
         finally:
             self.running = False  # signal to exit
-            self.writer.close()
             tasks = asyncio.all_tasks(self.loop)
             for t in [t for t in tasks if not (t.done() or t.cancelled())]:
                 # give canceled tasks the last chance to run

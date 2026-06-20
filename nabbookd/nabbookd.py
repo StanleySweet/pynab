@@ -42,44 +42,23 @@ class NabBookd(NabService):
         relpath = f"nabbookd/books/{isbn}/{voice}/{chapter}.mp3"
         next_file = f"{nabbookd_root}/sounds/{relpath}"
         if os.path.isfile(next_file):
-            packet = (
-                '{"type":"command","sequence":['
-                f'{{"audio":"{relpath}"}}],'
-                f'"request_id":"reading"}}\r\n'
-            )
+            await self._send_to_nabd({
+                "type": "command",
+                "sequence": [{"audio": relpath}],
+                "request_id": "reading",
+            })
         else:
             if self.has_more_voices(isbn):
                 outro = "outro-alt"
             else:
                 outro = "outro-noalt"
             self.__state_handler = self.process_nabd_packet_outro
-            packet = (
-                f'{{"type":"command","sequence":['
-                f'{{"audio":"nabbookd/{outro}.mp3",'
-                f'"choreography":"nabbookd/{outro}.chor"}}],'
-                f'"request_id":"outro"}}\r\n'
-            )
-        self.writer.write(packet.encode())
-        await self.writer.drain()
-
-    async def exit_interactive(self, abort_sound):
-        if abort_sound:
-            packet = (
-                '{"type":"command","sequence":['
-                '{"audio":"nabd/abort.wav"}]}\r\n'
-            )
-            self.writer.write(packet.encode())
-            await self.writer.drain()
-        packet = (
-            '{"type":"mode","mode":"idle",' '"events":["rfid/nabbookd"]}\r\n'
-        )
-        self.writer.write(packet.encode())
-        await self.writer.drain()
-
-    async def cancel_command(self, request_id):
-        packet = f'{{"type":"cancel","request_id":"{request_id}"}}\r\n'
-        self.writer.write(packet.encode())
-        await self.writer.drain()
+            await self._send_to_nabd({
+                "type": "command",
+                "sequence": [{"audio": f"nabbookd/{outro}.mp3",
+                               "choreography": f"nabbookd/{outro}.chor"}],
+                "request_id": "outro",
+            })
 
     async def process_nabd_packet(self, packet: NabdPacket):
         await self.__state_handler(packet)
@@ -101,13 +80,12 @@ class NabBookd(NabService):
                 packet["data"].encode()
             )
             self.__current_chapter = None
-            packet = (
-                '{"type":"mode","mode":"interactive",'
-                '"events":["button","ears"],'
-                '"request_id":"mode"}\r\n'
-            )
-            self.writer.write(packet.encode())
-            await self.writer.drain()
+            await self._send_to_nabd({
+                "type": "mode",
+                "mode": "interactive",
+                "events": ["button", "ears"],
+                "request_id": "mode",
+            })
         elif type == "response":
             # Ignore responses, as we can transition to idle state with several
             # messages (cancel/abort sound, etc.)
@@ -132,14 +110,12 @@ class NabBookd(NabService):
             and packet.get("request_id") == "mode"
         ):
             self.__state_handler = self.process_nabd_packet_intro
-            command_packet = (
-                '{"type":"command","sequence":['
-                '{"audio":"nabbookd/intro.mp3",'
-                '"choreography":"nabbookd/intro.chor"}],'
-                '"request_id":"intro"}\r\n'
-            )
-            self.writer.write(command_packet.encode())
-            await self.writer.drain()
+            await self._send_to_nabd({
+                "type": "command",
+                "sequence": [{"audio": "nabbookd/intro.mp3",
+                              "choreography": "nabbookd/intro.chor"}],
+                "request_id": "intro",
+            })
         elif packet["type"] == "button_event" and packet["event"] == "click":
             self.__state_handler = self.process_nabd_packet_idle
             await self.exit_interactive(True)
@@ -178,15 +154,13 @@ class NabBookd(NabService):
         elif packet["type"] == "button_event" and packet["event"] == "click":
             await self.cancel_command("reading")
             self.__state_handler = self.process_nabd_packet_outro
-            command_packet = (
-                '{"type":"command","sequence":['
-                '{"audio":"nabd/abort.wav"},'
-                '{"audio":"nabbookd/interrupt.mp3",'
-                '"choreography":"nabbookd/interrupt.chor"}],'
-                '"request_id":"outro"}\r\n'
-            )
-            self.writer.write(command_packet.encode())
-            await self.writer.drain()
+            await self._send_to_nabd({
+                "type": "command",
+                "sequence": [{"audio": "nabd/abort.wav"},
+                             {"audio": "nabbookd/interrupt.mp3",
+                              "choreography": "nabbookd/interrupt.chor"}],
+                "request_id": "outro",
+            })
         elif packet["type"] == "button_event":
             pass
         elif packet["type"] == "ear_event" and packet["ear"] == "left":
@@ -203,13 +177,11 @@ class NabBookd(NabService):
             packet["type"] == "response"
             and packet.get("request_id") == "reading"
         ):
-            command_packet = (
-                '{"type":"command","sequence":['
-                '{"audio":"nabbookd/previous.mp3"}],'
-                '"request_id":"feedback"}\r\n'
-            )
-            self.writer.write(command_packet.encode())
-            await self.writer.drain()
+            await self._send_to_nabd({
+                "type": "command",
+                "sequence": [{"audio": "nabbookd/previous.mp3"}],
+                "request_id": "feedback",
+            })
         elif (
             packet["type"] == "response"
             and "request_id" in packet
@@ -230,13 +202,11 @@ class NabBookd(NabService):
             packet["type"] == "response"
             and packet.get("request_id") == "reading"
         ):
-            command_packet = (
-                '{"type":"command","sequence":['
-                '{"audio":"nabbookd/next.mp3"}],'
-                '"request_id":"feedback"}\r\n'
-            )
-            self.writer.write(command_packet.encode())
-            await self.writer.drain()
+            await self._send_to_nabd({
+                "type": "command",
+                "sequence": [{"audio": "nabbookd/next.mp3"}],
+                "request_id": "feedback",
+            })
         elif (
             packet["type"] == "response"
             and "request_id" in packet

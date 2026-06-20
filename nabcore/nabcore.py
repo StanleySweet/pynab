@@ -9,7 +9,6 @@ from lockfile import AlreadyLocked, LockFailed
 from lockfile.pidlockfile import PIDLockFile
 
 from nabcommon import nablogging
-from nabcommon.nabservice import NabRecurrentService, NabService
 
 
 _SERVICE_CLASSES = None
@@ -54,7 +53,6 @@ class NabCore:
     def __init__(self):
         self.services = []
         self._nabd = None
-        self._nabd_server = None
         from nabcommon import settings as nab_settings
 
         nab_settings.configure("nabcore", orm=False, translations=True)
@@ -97,30 +95,15 @@ class NabCore:
         self._nabd.nabio.bind_ears_event(loop, self._nabd.ears_callback)
         self._nabd.nabio.bind_rfid_event(loop, self._nabd.rfid_callback)
         loop.create_task(self._nabd.idle_worker_loop())
-        self._nabd_server = await asyncio.start_server(
-            self._nabd.service_loop,
-            host=NabService.HOST,
-            port=NabService.PORT_NUMBER,
-        )
 
     async def _connect_service(self, svc):
-        retry = 10
-        while retry > 0:
-            try:
-                reader, writer = await asyncio.open_connection(
-                    svc.HOST, svc.PORT_NUMBER
-                )
-                svc.reader = reader
-                svc.writer = writer
-                svc.loop = asyncio.get_event_loop()
-                break
-            except ConnectionRefusedError:
-                retry -= 1
-                await asyncio.sleep(1)
-        if retry == 0:
-            name = type(svc).__name__
-            logging.critical("Could not connect %s to nabd, exiting", name)
-            raise RuntimeError(f"Connection failed for {name}")
+        outgoing = asyncio.Queue()
+        svc._outgoing = outgoing
+        svc.loop = asyncio.get_event_loop()
+        channel = self._nabd.register_service(
+            type(svc).__name__, outgoing
+        )
+        svc._incoming = channel.incoming
         asyncio.create_task(svc.client_loop())
         svc.start_service_loop(asyncio.get_event_loop())
 
@@ -159,14 +142,9 @@ class NabCore:
         finally:
             if self._nabd:
                 loop.run_until_complete(self._nabd.stop_idle_worker())
-                for writer in self._nabd.service_writers.copy():
-                    writer.close()
-                    loop.run_until_complete(writer.wait_closed())
             for svc in self.services:
-                if svc.writer:
-                    svc.writer.close()
-            if self._nabd_server:
-                self._nabd_server.close()
+                if svc._outgoing:
+                    svc._outgoing = None
             loop.run_until_complete(
                 asyncio.gather(
                     *(

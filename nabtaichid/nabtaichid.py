@@ -31,13 +31,11 @@ class NabTaichid(NabRandomService):
             logging.info("nabtaichid: rabbit asleep, skipping tai chi")
             return
         logging.info("nabtaichid: performing tai chi")
-        packet = (
-            '{"type":"command",'
-            '"sequence":[{"choreography":"nabtaichid/taichi.chor"}],'
-            '"expiration":"' + expiration.isoformat() + '"}\r\n'
-        )
-        self.writer.write(packet.encode("utf8"))
-        await self.writer.drain()
+        await self._send_to_nabd({
+            "type": "command",
+            "sequence": [{"choreography": "nabtaichid/taichi.chor"}],
+            "expiration": expiration.isoformat(),
+        })
 
     async def _nabd_get_and_clear_force(self):
         try:

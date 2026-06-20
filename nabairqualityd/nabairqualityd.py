@@ -162,14 +162,12 @@ class NabAirqualityd(NabInfoCachedService):
         logging.info(f"perform_additional: type={type}, info_data={'None' if info_data is None else 'loaded'}")
         if info_data is None:
             logging.info("perform_additional: no data available")
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":["nabairqualityd/signature.mp3"]},'
-                '"body":[{"audio":["nabairqualityd/no-data-error.mp3"]}],'
-                '"expiration":"' + expiration.isoformat() + '"}\r\n'
-            )
-            self.writer.write(packet.encode("utf8"))
-            await self.writer.drain()
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabairqualityd/signature.mp3"]},
+                "body": [{"audio": ["nabairqualityd/no-data-error.mp3"]}],
+                "expiration": expiration.isoformat(),
+            })
         elif type == "today":
             cfg = await self.client.get_dict_async("nabairqualityd")
             logging.info(f"perform_additional: use_tts={cfg.use_tts}")
@@ -182,14 +180,12 @@ class NabAirqualityd(NabInfoCachedService):
                 audio = f"tts:{text}"
             else:
                 audio = "nabairqualityd/" + message + ".mp3"
-            packet = (
-                '{"type":"message",'
-                '"signature":{"audio":["nabairqualityd/signature.mp3"]},'
-                '"body":[{"audio":["' + audio + '"]}],'
-                '"expiration":"' + expiration.isoformat() + '"}\r\n'
-            )
-            self.writer.write(packet.encode("utf8"))
-            await self.writer.drain()
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabairqualityd/signature.mp3"]},
+                "body": [{"audio": [audio]}],
+                "expiration": expiration.isoformat(),
+            })
 
     async def process_nabd_packet(self, packet):
         if packet["type"] == "state":

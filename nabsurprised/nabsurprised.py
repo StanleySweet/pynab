@@ -94,14 +94,12 @@ class NabSurprised(NabRandomService):
         if expiration is None:
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=1)
-        packet = (
-            f'{{"type":"message",'
-            f'"signature":{{"audio":["nabsurprised/respirations/*.mp3"]}},'
-            f'"body":[{{"audio":["{path}"]}}],'
-            f'"expiration":"{expiration.isoformat()}"}}\r\n'
-        )
-        self.writer.write(packet.encode("utf8"))
-        await self.writer.drain()
+            await self._send_to_nabd({
+                "type": "message",
+                "signature": {"audio": ["nabsurprised/respirations/*.mp3"]},
+                "body": [{"audio": [path]}],
+                "expiration": expiration.isoformat(),
+            })
 
     async def _nabd_get_and_clear_force(self):
         try:
