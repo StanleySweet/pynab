@@ -125,7 +125,6 @@ class NabCore:
         svc.start_service_loop(asyncio.get_event_loop())
 
     def run(self):
-        nablogging.setup_logging("nabcore")
         loop = asyncio.get_event_loop()
         nablogging.setup_asyncio_logging(loop)
         signal.signal(signal.SIGUSR1, self._signal_handler)
