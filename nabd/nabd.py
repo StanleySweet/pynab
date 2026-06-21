@@ -152,10 +152,13 @@ class Nabd:
         else:
             self.asr = None
             self.nlu = None
-        config = self.client.get("nabd")
-        self._bottom_led_rgb = _parse_hex_color(
-            config.get("bottom_led_color", "#00FFFF")
-        )
+        if self.nabio.has_sound_input():
+            config = self.client.get("nabd")
+            self._bottom_led_rgb = _parse_hex_color(
+                config.get("bottom_led_color", "#00FFFF")
+            )
+        else:
+            self._bottom_led_rgb = _parse_hex_color("#00FFFF")
 
     async def reload_config(self):
         """
@@ -184,10 +187,13 @@ class Nabd:
                 self.nlu = NLU(self._nlu_locale)
                 Nabd.leds_boot(self.nabio, 4)
             self.nabio.set_leds(None, None, None, None, None)
-        config = await self.client.get_async("nabd")
-        self._bottom_led_rgb = _parse_hex_color(
-            config.get("bottom_led_color", "#00FFFF")
-        )
+        if self.nabio.has_sound_input():
+            config = await self.client.get_async("nabd")
+            self._bottom_led_rgb = _parse_hex_color(
+                config.get("bottom_led_color", "#00FFFF")
+            )
+        else:
+            self._bottom_led_rgb = _parse_hex_color("#00FFFF")
         if self.state == State.IDLE:
             self.nabio.pulse(Led.BOTTOM, self._bottom_led_rgb)
 
