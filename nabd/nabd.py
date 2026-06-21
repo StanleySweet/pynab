@@ -18,6 +18,7 @@ from lockfile import AlreadyLocked, LockFailed  # type: ignore
 from lockfile.pidlockfile import PIDLockFile  # type: ignore
 
 from nabcommon import hardware, nablogging, network, settings
+from nabcommon.nabservice import NabService
 from nabcommon.config_client import ConfigClient
 from nabcommon.typing import (
     Animation,
@@ -1303,6 +1304,11 @@ class Nabd:
         self.nabio.bind_ears_event(self.loop, self.ears_callback)
         self.nabio.bind_rfid_event(self.loop, self.rfid_callback)
         idle_task = self.loop.create_task(self.idle_worker_loop())
+        server_task = self.loop.create_task(
+            asyncio.start_server(
+                self.service_loop, NabService.HOST, NabService.PORT_NUMBER
+            )
+        )
         try:
             self.loop.run_forever()
             if idle_task.done():
@@ -1317,6 +1323,7 @@ class Nabd:
             logging.critical(error_msg)
         finally:
             self.loop.run_until_complete(self.stop_idle_worker())
+            server_task.cancel()
             tasks = asyncio.all_tasks(self.loop)
             for t in [t for t in tasks if not (t.done() or t.cancelled())]:
                 # give canceled tasks the last chance to run
