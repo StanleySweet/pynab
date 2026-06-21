@@ -10,30 +10,39 @@ from pythonjsonlogger import jsonlogger
 _handling_exception = False
 
 
-class PinoFormatter(jsonlogger.JsonFormatter):
-    def __init__(self, service):
-        super().__init__(
-            fmt="%(message)s %(process)s",
-            rename_fields={"message": "msg", "process": "pid"},
+def setup_logging(daemon):
+    logdir = os.environ.get("LOGDIR", "/var/log/")
+    loglevel = os.environ.get("LOGLEVEL", "INFO")
+    logger = logging.getLogger()
+    log_handler = logging.handlers.WatchedFileHandler(
+        f"{logdir}/{daemon}.log"
+    )
+    log_handler.setFormatter(
+        jsonlogger.JsonFormatter(
+            fmt="%(message)s %(process)s %(levelname)s %(created)s",
+            rename_fields={
+                "message": "msg",
+                "process": "pid",
+                "levelname": "level",
+                "created": "time",
+            },
             static_fields={
                 "v": 1,
                 "hostname": socket.gethostname(),
-                "service": service,
+                "service": daemon,
             },
         )
-
-    def add_fields(self, log_record, record, message_dict):
-        super().add_fields(log_record, record, message_dict)
-        log_record["level"] = record.levelname.lower()
-        log_record["time"] = int(record.created * 1000)
-        if "exc_info" in log_record:
-            err = log_record.pop("exc_info")
-            if record.exc_info and record.exc_info[0]:
-                log_record["err"] = {
-                    "type": record.exc_info[0].__name__,
-                    "message": str(record.exc_info[1]),
-                    "stack": err,
-                }
+    )
+    logger.addHandler(log_handler)
+    try:
+        logger.setLevel(loglevel)
+    except ValueError:
+        loglevel = "DEBUG"
+        logger.setLevel(loglevel)
+    if loglevel == "DEBUG":
+        logging.debug("debug logging enabled")
+    sys.excepthook = _excepthook
+    logging.info(f"started with log level {loglevel}")
 
 
 def _excepthook(exc_type, exc_value, exc_traceback):
@@ -73,24 +82,3 @@ def setup_asyncio_logging(loop):
         loop.default_exception_handler(context)
 
     loop.set_exception_handler(_asyncio_exception_handler)
-
-
-def setup_logging(daemon):
-    logdir = os.environ.get("LOGDIR", "/var/log/")
-    loglevel = os.environ.get("LOGLEVEL", "INFO")
-    formatter = PinoFormatter(daemon)
-    logger = logging.getLogger()
-    log_handler = logging.handlers.WatchedFileHandler(
-        f"{logdir}/{daemon}.log"
-    )
-    log_handler.setFormatter(formatter)
-    logger.addHandler(log_handler)
-    try:
-        logger.setLevel(loglevel)
-    except ValueError:
-        loglevel = "DEBUG"
-        logger.setLevel(loglevel)
-    if loglevel == "DEBUG":
-        logging.debug("debug logging enabled")
-    sys.excepthook = _excepthook
-    logging.info(f"started with log level {loglevel}")
