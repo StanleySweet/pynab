@@ -1,4 +1,4 @@
-FROM python:3.7-bullseye
+FROM python:3.9-bullseye
 
 RUN apt-get update && apt-get install -y \
     postgresql-client gettext \
@@ -6,9 +6,6 @@ RUN apt-get update && apt-get install -y \
     wireless-tools sudo
 
 COPY Docker/nab/*.sh /usr/local/bin/
-
-# Fake nabd systemd service file used to retrieve the working directory
-RUN echo "WorkingDirectory=/opt/pynab" > /lib/systemd/system/nabd.service
 
 # Fake systemd-time-wait-sync.service needed by nabclockd
 RUN mkdir -p /run/systemd/timesync/ && touch /run/systemd/timesync/synchronized
@@ -23,9 +20,6 @@ RUN chmod a+w /var/log /run
 RUN echo "Europe/Paris" > /etc/timezone
 RUN ln -fs /usr/share/zoneinfo/Europe/Paris /etc/localtime
 
-# Make sure piwheels is available for pip
-RUN /bin/echo -e "[global]\nextra-index-url=https://www.piwheels.org/simple\n" > /etc/pip.conf
-
 RUN groupadd -g 1000 pi
 RUN useradd -u 1000 -g pi -m -s /bin/bash tagtagtag
 RUN echo "tagtagtag ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/010_tagtagtag-nopasswd
@@ -38,12 +32,13 @@ USER tagtagtag
 WORKDIR /opt/pynab
 
 ENV VIRTUAL_ENV=/opt/venv
-RUN python3.7 -m venv ${VIRTUAL_ENV}
+RUN python3.9 -m venv ${VIRTUAL_ENV}
 ENV PATH=${VIRTUAL_ENV}/bin:${PATH}
 
-COPY requirements.txt /tmp/requirements.txt
-# No ASR in virtual environment
-RUN grep -v -e py-kaldi-asr -e snips-nlu < /tmp/requirements.txt > /tmp/requirements_docker.txt
+COPY requirements-runtime.txt /tmp/requirements-runtime.txt
+# Remove ASR/NLU/hardware/platform-specific deps not needed in Docker
+RUN grep -v -e 'git+https' -e 'snips' -e 'kaldi' -e 'pyalsaaudio' -e 'rpi-ws281x' -e 'RPi.GPIO' -e 'smbus2' -e 'nfc' -e 'ndef' -e 'num2words' -e 'docopt' \
+    /tmp/requirements-runtime.txt > /tmp/requirements_docker.txt
 
 RUN ${VIRTUAL_ENV}/bin/pip install wheel
 RUN ${VIRTUAL_ENV}/bin/pip install -r /tmp/requirements_docker.txt
@@ -53,4 +48,3 @@ ENV NABD_PORT_NUMBER=10543
 
 EXPOSE 8000
 EXPOSE 10543
-EXPOSE 10544

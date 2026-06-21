@@ -1,17 +1,17 @@
 #!/bin/bash
 # -
-# Do needed inits, then run nabd, all nab.*d services and nabweb.
+# Do needed inits, then run nabcore (all services in one process) and nabweb.
 set -e
 
 # Do inits
 echo "Doing Pynab inits..."
 /usr/local/bin/run-inits.sh
 
-# Start services
-for daemon in nabd ${DAEMONS:-} ; do
-    echo "Starting ${daemon}..."
-    /usr/local/bin/run-service.sh ${daemon} &
-done
+# Start nabcore (all service daemons in a single process)
+echo "Starting nabcore..."
+ln -sf /dev/stdout /var/log/nabcore.log
+/opt/venv/bin/python3 -m nabcore.nabcore &
+NABCORE_PID=$!
 
 # Start nabweb
 echo "Starting nabweb..."

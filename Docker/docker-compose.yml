@@ -1,12 +1,8 @@
-version: '2.0'
 services:
     # PostgreSQL database
     db:
         container_name: PostgreSQL
-        image: postgres:11-alpine
-        security_opt:
-          # See: https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_3.13.0#time64_requirements
-          - seccomp:unconfined
+        image: postgres:16-alpine
         volumes:
           - var-lib-postgresql-data:/var/lib/postgresql/data
           - var-run-postgresql:/var/run/postgresql
@@ -26,12 +22,10 @@ services:
         depends_on:
           - db
         environment:
-          - DAEMONS=nab8balld nabairqualityd nabbookd nabclockd nabmastodond nabsurprised nabtaichid nabweatherd
           - TZ=Europe/Paris
         command: ["/bin/bash", "/usr/local/bin/run-pynab.sh"]
         ports:
           - 10543:10543
-          - 10544:10544
           - 8000:8000
 volumes:
     # Share the PostgreSQL socket between containers
