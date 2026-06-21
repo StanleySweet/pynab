@@ -1,17 +1,9 @@
 #!/bin/bash
 # -
-# Wait for the DB to be accessible and run the DB migrations,
-# then compile localization messages
+# Run the DB migrations, then compile localization messages
 set -e
 
 SELF="Init"
-
-/usr/local/bin/wait-for-db.sh ${SELF}
-RC=$?
-if [ ! ${RC} -eq 0 ]; then
-    echo "${SELF}: unable to access database, aborting."
-    exit 1
-fi
 
 echo "${SELF}: running DB model migrations..."
 /opt/venv/bin/python3 /opt/pynab/manage.py migrate

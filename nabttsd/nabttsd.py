@@ -5,7 +5,11 @@ import logging
 import os
 import sys
 
-import alsaaudio
+try:
+    import alsaaudio
+    _HAS_ALSA = True
+except ImportError:
+    _HAS_ALSA = False
 import websockets
 
 from nabcommon.config_client import ConfigClient

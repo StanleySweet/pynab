@@ -7,6 +7,11 @@ set -e
 echo "Doing Pynab inits..."
 /usr/local/bin/run-inits.sh
 
+# Start mock configd (replaces the Pi's /usr/local/bin/configd)
+echo "Starting mock configd..."
+/opt/venv/bin/python3 /usr/local/bin/mock_configd.py &
+CONFIGD_PID=$!
+
 # Start nabcore (all service daemons in a single process)
 echo "Starting nabcore..."
 ln -sf /dev/stdout /var/log/nabcore.log

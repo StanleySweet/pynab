@@ -1,15 +1,4 @@
 services:
-    # PostgreSQL database
-    db:
-        container_name: PostgreSQL
-        image: postgres:16-alpine
-        volumes:
-          - var-lib-postgresql-data:/var/lib/postgresql/data
-          - var-run-postgresql:/var/run/postgresql
-        environment:
-          - POSTGRES_USER=pynab
-          - POSTGRES_PASSWORD=pynab
-          - TZ=Europe/Paris
     # Pynab services
     pynab:
         container_name: Pynab
@@ -18,9 +7,7 @@ services:
             dockerfile: Docker/nab/Dockerfile
         volumes:
           - ../:/opt/pynab
-          - var-run-postgresql:/var/run/postgresql
-        depends_on:
-          - db
+          - pynab-data:/opt/pynab/data
         environment:
           - TZ=Europe/Paris
         command: ["/bin/bash", "/usr/local/bin/run-pynab.sh"]
@@ -28,7 +15,5 @@ services:
           - 10543:10543
           - 8000:8000
 volumes:
-    # Share the PostgreSQL socket between containers
-    var-run-postgresql:
-    # Persist the PostgreSQL data across restarts
-    var-lib-postgresql-data:
+    # Persist data (SQLite db, uploaded files, etc.) across restarts
+    pynab-data:

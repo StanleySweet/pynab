@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     libmpg123-dev libasound2-dev \
     wireless-tools sudo
 
-COPY Docker/nab/*.sh /usr/local/bin/
+COPY Docker/nab/*.sh Docker/nab/mock_configd.py /usr/local/bin/
 
 # Fake systemd-time-wait-sync.service needed by nabclockd
 RUN mkdir -p /run/systemd/timesync/ && touch /run/systemd/timesync/synchronized
