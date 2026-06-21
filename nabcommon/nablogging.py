@@ -9,33 +9,23 @@ from pythonjsonlogger import jsonlogger
 
 _handling_exception = False
 
-_PINO_LEVELS = {
-    logging.CRITICAL: 60,
-    logging.ERROR: 50,
-    logging.WARNING: 40,
-    logging.INFO: 30,
-    logging.DEBUG: 20,
-    logging.NOTSET: 10,
-}
-
 
 class PinoFormatter(jsonlogger.JsonFormatter):
     def __init__(self, service):
-        self._service = service
-        self._hostname = socket.gethostname()
         super().__init__(
-            fmt="%(message)s",
-            rename_fields={"message": "msg"},
-            static_fields={"v": 1},
+            fmt="%(message)s %(process)s",
+            rename_fields={"message": "msg", "process": "pid"},
+            static_fields={
+                "v": 1,
+                "hostname": socket.gethostname(),
+                "service": service,
+            },
         )
 
     def add_fields(self, log_record, record, message_dict):
         super().add_fields(log_record, record, message_dict)
-        log_record["level"] = _PINO_LEVELS.get(record.levelno, 30)
+        log_record["level"] = record.levelname.lower()
         log_record["time"] = int(record.created * 1000)
-        log_record["pid"] = record.process
-        log_record["hostname"] = self._hostname
-        log_record["service"] = self._service
         if "exc_info" in log_record:
             err = log_record.pop("exc_info")
             if record.exc_info and record.exc_info[0]:
