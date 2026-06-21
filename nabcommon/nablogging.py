@@ -1,9 +1,10 @@
-import json
 import logging
 import logging.handlers
 import os
 import socket
 import sys
+
+from pythonjsonlogger import jsonlogger
 
 
 _handling_exception = False
@@ -18,29 +19,31 @@ _PINO_LEVELS = {
 }
 
 
-class PinoFormatter(logging.Formatter):
+class PinoFormatter(jsonlogger.JsonFormatter):
     def __init__(self, service):
-        super().__init__()
         self._service = service
         self._hostname = socket.gethostname()
+        super().__init__(
+            fmt="%(message)s",
+            rename_fields={"message": "msg"},
+            static_fields={"v": 1},
+        )
 
-    def format(self, record):
-        entry = {
-            "level": _PINO_LEVELS.get(record.levelno, 30),
-            "time": int(record.created * 1000),
-            "pid": record.process,
-            "hostname": self._hostname,
-            "service": self._service,
-            "msg": record.getMessage(),
-            "v": 1,
-        }
-        if record.exc_info and record.exc_info[0]:
-            entry["err"] = {
-                "type": record.exc_info[0].__name__,
-                "message": str(record.exc_info[1]),
-                "stack": self.formatException(record.exc_info),
-            }
-        return json.dumps(entry, ensure_ascii=False, default=str)
+    def add_fields(self, log_record, record, message_dict):
+        super().add_fields(log_record, record, message_dict)
+        log_record["level"] = _PINO_LEVELS.get(record.levelno, 30)
+        log_record["time"] = int(record.created * 1000)
+        log_record["pid"] = record.process
+        log_record["hostname"] = self._hostname
+        log_record["service"] = self._service
+        if "exc_info" in log_record:
+            err = log_record.pop("exc_info")
+            if record.exc_info and record.exc_info[0]:
+                log_record["err"] = {
+                    "type": record.exc_info[0].__name__,
+                    "message": str(record.exc_info[1]),
+                    "stack": err,
+                }
 
 
 def _excepthook(exc_type, exc_value, exc_traceback):
