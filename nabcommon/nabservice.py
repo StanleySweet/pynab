@@ -492,10 +492,10 @@ class NabInfoService(NabRecurrentService, ABC):
         if not force and self._nabd_asleep:
             logging.info(f"{type(self).__name__.lower()}: rabbit asleep, skipping")
             return
-        logging.info(f"perform called with args={type}")
+        service_name = self.__class__.__name__.lower()
+        logging.info(f"{service_name}: perform called with args={type}")
         info_data = await self._do_fetch_info_data(config)
         info_animation = self.get_animation(info_data)
-        service_name = self.__class__.__name__.lower()
         info_packet: dict = {"type": "info", "info_id": service_name}
         if info_animation is not None:
             info_packet["animation"] = json.loads(info_animation)
