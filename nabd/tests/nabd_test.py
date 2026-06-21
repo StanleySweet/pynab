@@ -65,6 +65,11 @@ class TestNabdBase(unittest.TestCase):
             "nabd.nabd.network.internet_connection", return_value=True
         )
         self._inet_patch.start()
+        self._config_patch = patch(
+            "nabd.nabd.ConfigClient.get",
+            return_value={"bottom_led_color": "#00FFFF"},
+        )
+        self._config_patch.start()
         self.nabd_cv = threading.Condition()
         with self.nabd_cv:
             self.nabd_thread = threading.Thread(target=self.nabd_thread_loop)
@@ -79,6 +84,7 @@ class TestNabdBase(unittest.TestCase):
             raise RuntimeError("nabd_thread still running")
         self._net_patch.stop()
         self._inet_patch.stop()
+        self._config_patch.stop()
 
     def test_init(self):
         self.assertEqual(self.nabio.left_ear, 0)

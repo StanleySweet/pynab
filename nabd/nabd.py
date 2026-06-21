@@ -88,7 +88,7 @@ STATUS_FAILURE = cast(ResponseFailurePacketProto, {"status": "failure"})
 
 
 def status_error(error_type: str, error_message: str) -> ResponseErrorPacketProto:
-    return {"status": "error", "type": error_type, "message": error_message}
+    return {"status": "error", "class": error_type, "message": error_message}
 
 
 def status_error_malformed_packet(
@@ -965,7 +965,7 @@ class Nabd:
         template: ResponsePacketProto,
         channel: ServiceChannel,
     ):
-        response_packet: AnyPacket = cast(AnyPacket, template)
+        response_packet: AnyPacket = cast(AnyPacket, dict(template))
         if original_packet is not None and "request_id" in original_packet:
             response_packet["request_id"] = cast(
                 ServiceRequestPacket, original_packet
