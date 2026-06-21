@@ -1,16 +1,13 @@
-# Runtime dependencies
+# Runtime direct dependencies
 wheel
-Django==4.2.18; python_version != '3.7'
-Django==3.2.25; python_version == '3.7'
+Django==3.2.25
 gunicorn==22.0.0
 lockfile==0.12.2
 Mastodon.py==1.5.1
-meteofrance-api==1.3.0; python_version != '3.7'
-meteofrance-api==1.0.2; python_version == '3.7'
+meteofrance-api==1.3.0
 mpg123==0.4
 paho-mqtt==1.6.1
-websockets==10.4; python_version == '3.7'
-websockets>=13.0; python_version != '3.7'
+websockets==10.4
 pyalsaaudio==0.9.0; sys_platform == 'linux'
 rpi-ws281x==4.3.3; sys_platform == 'linux' and ('armv6l' in platform_machine or 'armv7l' in platform_machine or 'aarch64' in platform_machine)
 RPi.GPIO==0.7.1; sys_platform == 'linux' and ('armv6l' in platform_machine or 'armv7l' in platform_machine or 'aarch64' in platform_machine)
@@ -43,40 +40,35 @@ snips-nlu-utils==0.9.1; sys_platform != 'linux' or ('armv6l' not in platform_mac
 https://github.com/pguyot/pynfcdev/releases/download/v0.7.4/pynfcdev-0.7.4-py3-none-any.whl
 ndef==0.2
 
-# Runtime transitive dependencies (pinned versions)
-typing_extensions==3.10.0.2; python_version == '3.7'
-typing_extensions==4.12.2; python_version != '3.7'
-pytz==2021.3
-asgiref==3.6.0
-sqlparse==0.4.4; python_version == '3.7'
-sqlparse==0.5.0; python_version != '3.7'
-six==1.16.0
-python_magic==0.4.25
-decorator==5.1.1
-blurhash==1.1.4
-python_dateutil==2.8.2
-PyYAML==6.0
-Cython==0.29.30
-# numpy<1.24: np.float was removed in 1.24, required by scikit-learn==0.24.2 / snips-nlu
-numpy==1.23.5
-# Latest scipy compatible with snips-nlu
-scipy==1.6.2
-# Latest scikit-learn compatible with latest snips-nlu (requires numpy<1.24)
-scikit_learn==0.24.2
+# Runtime transitive dependencies (versions matching Pi deployment)
+asgiref==3.11.1
+blurhash==1.1.5
+certifi==2026.5.20
+charset-normalizer==3.4.7
+cython==3.2.5
+decorator==5.3.1
 deprecation==2.1.0
-pyaml==19.12.0
-# Latest future compatible with latest snips-nlu
 future==0.17.1
-sklearn_crfsuite==0.3.6
-python_crfsuite==0.9.7
-joblib==1.2.0
-tabulate==0.8.9
-tqdm==4.66.3
-packaging==24.0
-certifi==2024.12.14
+idna==3.18
+ioctl-opt==1.3
+joblib==1.5.3
+numpy==1.23.5
+packaging==26.2
+pyaml==19.12.0
+python-crfsuite==0.9.11
+python-dateutil==2.8.2
+python-json-logger==4.0.0
+python-magic==0.4.27
+pytz==2021.3
+pyyaml==6.0.3
+requests==2.31.0
+scikit-learn==0.24.2
+scipy==1.13.1
+six==1.17.0
+sklearn-crfsuite==0.3.6
+sqlparse==0.5.5
+tabulate==0.9.0
+threadpoolctl==3.6.0
+tqdm==4.68.1
+typing-extensions==4.15.0
 urllib3==1.26.20
-charset_normalizer==2.0.12
-idna==3.7
-python-json-logger==4.1.0
-requests==2.31.0; python_version == '3.7'
-requests==2.32.3; python_version != '3.7'
