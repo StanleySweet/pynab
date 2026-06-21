@@ -732,6 +732,12 @@ class TestNabd(TestNabdBase):
                 b'"request_id":"queued","sequence":[]}\r\n'
             )
 
+            time.sleep(1)
+            packet = s.readline()  # state: playing (broadcast on transition)
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "state")
+            self.assertEqual(packet_j["state"], "playing")
+
             time.sleep(3)
             packet = s.readline()  # response: ok
             packet_j = json.loads(packet.decode("utf8"))
