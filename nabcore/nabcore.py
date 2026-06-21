@@ -18,34 +18,30 @@ def _import_services():
     global _SERVICE_CLASSES
     if _SERVICE_CLASSES is not None:
         return _SERVICE_CLASSES
-    from nab8balld.nab8balld import Nab8Balld
-    from nabairqualityd.nabairqualityd import NabAirqualityd
-    from nabbookd.nabbookd import NabBookd
-    from nabclockd.nabclockd import NabClockd
-    from nabiftttd.nabiftttd import NabIftttd
-    from nabmastodond.nabmastodond import NabMastodond
-    from nabmqttd.nabmqttd import NabMqttd
-    from nabradio.nabradio import NabRadio
-    from nabsurprised.nabsurprised import NabSurprised
-    from nabtaichid.nabtaichid import NabTaichid
-    from nabttsd.nabttsd import NabTtsd
-    from nabweatherd.nabweatherd import NabWeatherd
-    from nabwebhook.nabwebhook import NabWebhook
-    _SERVICE_CLASSES = [
-        Nab8Balld,
-        NabAirqualityd,
-        NabBookd,
-        NabClockd,
-        NabIftttd,
-        NabMastodond,
-        NabMqttd,
-        NabRadio,
-        NabSurprised,
-        NabTaichid,
-        NabTtsd,
-        NabWeatherd,
-        NabWebhook,
+    logger = logging.getLogger(__name__)
+    _imports = [
+        ("nab8balld.nab8balld", "Nab8Balld"),
+        ("nabairqualityd.nabairqualityd", "NabAirqualityd"),
+        ("nabbookd.nabbookd", "NabBookd"),
+        ("nabclockd.nabclockd", "NabClockd"),
+        ("nabiftttd.nabiftttd", "NabIftttd"),
+        ("nabmastodond.nabmastodond", "NabMastodond"),
+        ("nabmqttd.nabmqttd", "NabMqttd"),
+        ("nabradio.nabradio", "NabRadio"),
+        ("nabsurprised.nabsurprised", "NabSurprised"),
+        ("nabtaichid.nabtaichid", "NabTaichid"),
+        ("nabttsd.nabttsd", "NabTtsd"),
+        ("nabweatherd.nabweatherd", "NabWeatherd"),
+        ("nabwebhook.nabwebhook", "NabWebhook"),
     ]
+    _SERVICE_CLASSES = []
+    for module_name, cls_name in _imports:
+        try:
+            mod = __import__(module_name, fromlist=[cls_name])
+            cls = getattr(mod, cls_name)
+            _SERVICE_CLASSES.append(cls)
+        except ImportError as e:
+            logger.warning("Service %s unavailable: %s", cls_name, e)
     return _SERVICE_CLASSES
 
 

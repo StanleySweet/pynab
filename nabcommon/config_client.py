@@ -17,6 +17,7 @@ Usage:
 import asyncio
 import datetime
 import json
+import logging
 import os
 import socket
 import time
@@ -184,8 +185,15 @@ class ConfigClient:
             except json.JSONDecodeError as e:
                 raise ConfigError(f"configd bad response: {e}")
 
-    def get(self, table, fields=None):
-        data = self._call("get", table, fields=fields)
+    def get(self, table, fields=None, required=False):
+        try:
+            data = self._call("get", table, fields=fields)
+        except ConfigError as e:
+            if required:
+                raise
+            logger = logging.getLogger(__name__)
+            logger.warning("Config %s unavailable, using defaults: %s", table, e)
+            return {}
         return data
 
     def get_dict(self, table, fields=None):
