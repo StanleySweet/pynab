@@ -558,7 +558,7 @@ class Nabd:
                     self.idle_queue.append((packet, channel))
                     self.idle_cv.notify()
                 logging.info(
-                    f"nabd: command queued while rabbit is asleep: "
+                    f"nabd: command queued: "
                     f"slot={slot} request_id={packet.get('request_id', 'none')}"
                 )
 

@@ -718,6 +718,35 @@ class TestNabd(TestNabdBase):
             s1.close()
 
 
+    def test_command_queued_from_idle(self):
+        """A command from a non-interactive service while idle is queued and processed."""
+        s = self.service_socket()
+        try:
+            packet = s.readline()  # state: idle
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "state")
+            self.assertEqual(packet_j["state"], "idle")
+
+            s.write(
+                b'{"type":"command",'
+                b'"request_id":"queued","sequence":[]}\r\n'
+            )
+
+            time.sleep(3)
+            packet = s.readline()  # response: ok
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "response")
+            self.assertEqual(packet_j["request_id"], "queued")
+            self.assertEqual(packet_j["status"], "ok")
+
+            packet = s.readline()  # state: idle
+            packet_j = json.loads(packet.decode("utf8"))
+            self.assertEqual(packet_j["type"], "state")
+            self.assertEqual(packet_j["state"], "idle")
+        finally:
+            s.close()
+
+
 @pytest.mark.django_db(transaction=True)
 class TestRfid(TestNabdBase):
     def tearDown(self):
