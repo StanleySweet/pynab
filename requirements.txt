@@ -1,10 +1,7 @@
-# Direct dependencies
+# Runtime dependencies
 wheel
 Django==4.2.18; python_version != '3.7'
 Django==3.2.25; python_version == '3.7'
-django-stubs==1.11.0
-django-stubs-ext==0.4.0
-mypy==0.950
 gunicorn==22.0.0
 lockfile==0.12.2
 Mastodon.py==1.5.1
@@ -12,20 +9,8 @@ meteofrance-api==1.3.0; python_version != '3.7'
 meteofrance-api==1.0.2; python_version == '3.7'
 mpg123==0.4
 paho-mqtt==1.6.1
-psycopg2-binary==2.9.3
 websockets==10.4; python_version == '3.7'
 websockets>=13.0; python_version != '3.7'
-pytest==7.0.1
-#pytest-django==4.5.2
-pytest-django==3.8.0
-pytest-pep8==1.0.6
-asynctest==0.13.0
-coverage==6.3.2
-black==23.3.0; python_version == '3.7'
-black==24.10.0; python_version != '3.7'
-flake8==5.0.4
-isort==5.10.1
-pre_commit==2.17.0
 pyalsaaudio==0.9.0; sys_platform == 'linux'
 rpi-ws281x==4.3.3; sys_platform == 'linux' and ('armv6l' in platform_machine or 'armv7l' in platform_machine or 'aarch64' in platform_machine)
 RPi.GPIO==0.7.1; sys_platform == 'linux' and ('armv6l' in platform_machine or 'armv7l' in platform_machine or 'aarch64' in platform_machine)
@@ -57,6 +42,22 @@ snips-nlu-utils==0.9.1; sys_platform != 'linux' or ('armv6l' not in platform_mac
 
 https://github.com/pguyot/pynfcdev/releases/download/v0.7.4/pynfcdev-0.7.4-py3-none-any.whl
 ndef==0.2
+
+# Dev dependencies
+django-stubs==1.11.0
+django-stubs-ext==0.4.0
+mypy==0.950
+pytest==7.0.1
+#pytest-django==4.5.2
+pytest-django==3.8.0
+pytest-pep8==1.0.6
+asynctest==0.13.0
+coverage==6.3.2
+black==23.3.0; python_version == '3.7'
+black==24.10.0; python_version != '3.7'
+flake8==5.0.4
+isort==5.10.1
+pre_commit==2.17.0
 
 # Indirect frozen dependencies
 mypy_extensions==0.4.3
@@ -102,7 +103,7 @@ Cython==0.29.30
 numpy==1.23.5
 # Latest scipy compatible with snips-nlu
 scipy==1.6.2
-num2words==0.5.10
+
 # Latest scikit-learn compatible with latest snips-nlu (requires numpy<1.24)
 scikit_learn==0.24.2
 deprecation==2.1.0
@@ -123,7 +124,6 @@ platformdirs==2.5.1; python_version == '3.7'
 platformdirs==3.9.1; python_version != '3.7'
 distlib==0.3.9
 filelock==3.12.2
-docopt==0.6.2
 joblib==1.2.0
 python_crfsuite==0.9.7
 tabulate==0.8.9
