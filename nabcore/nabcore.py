@@ -95,6 +95,13 @@ class NabCore:
         self._nabd.nabio.bind_ears_event(loop, self._nabd.ears_callback)
         self._nabd.nabio.bind_rfid_event(loop, self._nabd.rfid_callback)
         loop.create_task(self._nabd.idle_worker_loop())
+        loop.create_task(
+            asyncio.start_server(
+                self._nabd.service_loop,
+                "127.0.0.1",
+                10543,
+            )
+        )
 
     async def _connect_service(self, svc):
         outgoing = asyncio.Queue()
