@@ -546,7 +546,7 @@ class NabWeatherd(NabInfoService):
             logging.debug("get_animation: no visual information")
             return None
 
-    async def perform_additional(self, expiration, type, info_data, config_t):
+    async def perform_additional(self, expiration, msg_type, info_data, config_t):
         (
             location,
             unit,
@@ -572,18 +572,18 @@ class NabWeatherd(NabInfoService):
                 "expiration": expiration.isoformat(),
             })
         else:
-            if type == "today":
+            if msg_type == "today":
                 weather_class_key = info_data["today_forecast_weather_class"]
                 max_temp = info_data["today_forecast_max_temp"]
-            elif type == "tomorrow":
+            elif msg_type == "tomorrow":
                 weather_class_key = info_data["tomorrow_forecast_weather_class"]
                 max_temp = info_data["tomorrow_forecast_max_temp"]
             else:
-                logging.debug(f"Unknown type {type}")
+                logging.debug(f"Unknown type {msg_type}")
                 return
             if weather_class_key is None or weather_class_key not in NabWeatherd.WEATHER_CLASSES:
                 logging.warning(
-                    f"unexpected weather class for {type}: {weather_class_key}"
+                    f"unexpected weather class for {msg_type}: {weather_class_key}"
                 )
                 await self._send_to_nabd({
                     "type": "message",
@@ -603,14 +603,14 @@ class NabWeatherd(NabInfoService):
                     if unit == NabWeatherd.UNIT_FARENHEIT:
                         max_temp_f = round(max_temp * 1.8 + 32.0)
                         text = _("%(type)s it will be %(weather)s, %(temp)d %(unit)s.") % {
-                            "type": _(type.capitalize()),
+                            "type": _(msg_type.capitalize()),
                             "weather": _(weather_class),
                             "temp": max_temp_f,
                             "unit": _("degrees Fahrenheit"),
                         }
                     else:
                         text = _("%(type)s it will be %(weather)s, %(temp)d %(unit)s.") % {
-                            "type": _(type.capitalize()),
+                            "type": _(msg_type.capitalize()),
                             "weather": _(weather_class),
                             "temp": max_temp,
                             "unit": _("degrees Celsius"),
@@ -631,7 +631,7 @@ class NabWeatherd(NabInfoService):
                     "signature": {"audio": ["nabweatherd/signature.mp3"]},
                     "body": [{
                         "audio": [
-                            f"nabweatherd/{type}.mp3",
+                            f"nabweatherd/{msg_type}.mp3",
                             f"nabweatherd/sky/{weather_class}.mp3",
                             f"nabweatherd/temp/{max_temp}.mp3",
                             f"nabweatherd/{unit_sound_file}",
