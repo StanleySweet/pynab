@@ -155,13 +155,15 @@ class NabService(ABC):
     def signal_daemon(cls) -> None:
         service_name = cls.__name__.lower()
         pidfilepath = f"/run/{service_name}.pid"
-        try:
-            with open(pidfilepath, "r") as f:
-                pidstr = f.read()
-            os.kill(int(pidstr), signal.SIGUSR1)
-        # Silently ignore the fact that the daemon is not running
-        except OSError:
-            pass
+        pidfilepaths = [pidfilepath, "/run/nabcore.pid"]
+        for pidfilepath in pidfilepaths:
+            try:
+                with open(pidfilepath, "r") as f:
+                    pidstr = f.read()
+                os.kill(int(pidstr), signal.SIGUSR1)
+                return
+            except OSError:
+                continue
 
     @classmethod
     def main(cls, argv: List[str]) -> None:

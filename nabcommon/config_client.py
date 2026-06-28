@@ -185,7 +185,7 @@ class ConfigClient:
             except json.JSONDecodeError as e:
                 raise ConfigError(f"configd bad response: {e}")
 
-    def get(self, table, fields=None, required=False):
+    def get(self, table, fields=None, required=True):
         try:
             data = self._call("get", table, fields=fields)
         except ConfigError as e:
