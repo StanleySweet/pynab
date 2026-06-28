@@ -48,10 +48,10 @@ class NabSurprised(NabRandomService):
             return
         await self._do_perform(expiration, **kwargs)
 
-    def _tts_texts(self, type):
+    def _tts_texts(self, message_type):
         texts = []
         for i in range(100):
-            msgid = f"SURPRISE_{type}_{i}"
+            msgid = f"SURPRISE_{message_type}_{i}"
             text = _(msgid)
             if text == msgid:
                 break
@@ -64,14 +64,14 @@ class NabSurprised(NabRandomService):
                 texts = ["Surprise!"]
         return texts
 
-    async def _do_perform(self, expiration, lang=None, type=None):
-        logging.info("nabsurprised: performing surprise, type=%s", type)
+    async def _do_perform(self, expiration, lang=None, message_type=None):
+        logging.info("nabsurprised: performing surprise, message_type=%s", message_type)
         cfg = await self.client.get_async("nabsurprised")
         if cfg.get("use_tts"):
             if lang is None or lang == "default":
                 lang = "fr_FR"
             with override(lang):
-                texts = self._tts_texts(type)
+                texts = self._tts_texts(message_type)
                 text = random.choice(texts)
             path = f"tts:{text}"
         else:
@@ -79,17 +79,17 @@ class NabSurprised(NabRandomService):
                 lang_prefix = ""
             else:
                 lang_prefix = lang + "/"
-            if type is None:
+            if message_type is None:
                 today = datetime.date.today()
                 today_with_style = today.strftime("%m-%d")
                 today_path = f"{lang_prefix}nabsurprised/{today_with_style}/*.mp3"
                 regular_path = f"{lang_prefix}nabsurprised/*.mp3"
                 path = today_path + ";" + regular_path
             else:
-                if type == "surprise":
+                if message_type == "surprise":
                     type_subdir = ""
                 else:
-                    type_subdir = type + "/"
+                    type_subdir = message_type + "/"
                 path = f"{lang_prefix}nabsurprised/{type_subdir}*.mp3"
         if expiration is None:
             now = datetime.datetime.now(datetime.timezone.utc)
@@ -214,26 +214,26 @@ class NabSurprised(NabRandomService):
             intent = packet["nlu"]["intent"]
             if intent in NabSurprised.NLU_INTENTS:
                 logging.info("nabsurprised: ASR trigger, intent=%s", intent)
-                _, type = intent.split("/")
+                _, message_type = intent.split("/")
                 now = datetime.datetime.now(datetime.timezone.utc)
                 expiration = now + datetime.timedelta(minutes=1)
-                await self.perform(expiration, None, None, type=type)
+                await self.perform(expiration, None, None, message_type=message_type)
         elif (
             packet["type"] == "rfid_event"
             and packet["app"] == "nabsurprised"
             and packet["event"] == "detected"
         ):
             if "data" in packet:
-                lang, type = rfid_data.unserialize(
+                lang, message_type = rfid_data.unserialize(
                     packet["data"].encode("utf8")
                 )
             else:
                 lang = "default"
-                type = "surprise"
-            logging.info("nabsurprised: RFID trigger, type=%s, lang=%s", type, lang)
+                message_type = "surprise"
+            logging.info("nabsurprised: RFID trigger, message_type=%s, lang=%s", message_type, lang)
             now = datetime.datetime.now(datetime.timezone.utc)
             expiration = now + datetime.timedelta(minutes=1)
-            await self.perform(expiration, None, None, force=True, lang=lang, type=type)
+            await self.perform(expiration, None, None, force=True, lang=lang, message_type=message_type)
 
 
 if __name__ == "__main__":

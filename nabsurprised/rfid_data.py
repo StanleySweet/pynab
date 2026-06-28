@@ -54,14 +54,14 @@ def serialize(lang_code, type_name):
         if code == lang_code:
             encoded_lang = lang
     encoded_type = TypeEnum.SURPRISE
-    for type, name in TYPE_NAMES.items():
+    for message_type, name in TYPE_NAMES.items():
         if name == type_name:
-            encoded_type = type
+            encoded_type = message_type
     return bytes([encoded_lang.value, encoded_type.value])
 
 
 def unserialize(data):
-    type = TypeEnum.SURPRISE
+    message_type = TypeEnum.SURPRISE
     lang = LangEnum.DEFAULT
     if len(data) >= 2:
         try:
@@ -69,9 +69,9 @@ def unserialize(data):
         except ValueError:
             pass
         try:
-            type = TypeEnum(data[1])
+            message_type = TypeEnum(data[1])
         except ValueError:
             pass
-    type_name = TYPE_NAMES[type]
+    type_name = TYPE_NAMES[message_type]
     lang_code = LANG_CODES[lang]
     return lang_code, type_name

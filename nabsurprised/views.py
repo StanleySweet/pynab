@@ -45,13 +45,13 @@ class RFIDDataView(TemplateView):
         Unserialize RFID application data
         """
         lang = "default"
-        type = "surprise"
+        message_type = "surprise"
         data = request.GET.get("data", None)
         if data:
-            lang, type = rfid_data.unserialize(data.encode("utf8"))
+            lang, message_type = rfid_data.unserialize(data.encode("utf8"))
         context = self.get_context_data(**kwargs)
         context["lang"] = lang
-        context["type"] = type
+        context["type"] = message_type
         return render(request, RFIDDataView.template_name, context=context)
 
     def post(self, request, *args, **kwargs):
@@ -59,11 +59,11 @@ class RFIDDataView(TemplateView):
         Serialize RFID application data
         """
         lang = "default"
-        type = "surprise"
+        message_type = "surprise"
         if "type" in request.POST:
-            type = request.POST["type"]
+            message_type = request.POST["type"]
         if "lang" in request.POST:
             lang = request.POST["lang"]
-        data = rfid_data.serialize(lang, type)
+        data = rfid_data.serialize(lang, message_type)
         data = data.decode("utf8")
         return JsonResponse({"data": data})
