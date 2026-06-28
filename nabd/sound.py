@@ -42,8 +42,23 @@ class Sound(object, metaclass=abc.ABCMeta):
         from nabcommon.config_client import ConfigClient
         client = ConfigClient()
         cfg = await client.get_async("nabttsd")
+        voice = cfg.get("voice", "")
+        if not voice:
+            locale_cfg = await client.get_async("nabd")
+            user_locale = locale_cfg.get("locale", "fr_FR")
+            voice = {
+                "fr_FR": "fr_FR-upmc-medium",
+                "en_US": "en_US-lessac-medium",
+                "en_GB": "en_GB-vctk-medium",
+                "de_DE": "de_DE-thorsten-medium",
+                "es_ES": "es_ES-davefx-medium",
+                "it_IT": "it_IT-riccardo-medium",
+                "pt_BR": "pt_BR-edresson-medium",
+                "ja_JP": "ja_JP-kurenai-medium",
+            }.get(user_locale, "default")
         return (
             cfg.get("tts_addr", "pi4.local:8765"),
+            voice,
             cfg.get("length_scale", 1.5),
         )
 
@@ -54,16 +69,16 @@ class Sound(object, metaclass=abc.ABCMeta):
             if not text:
                 logging.warning("TTS preload: empty text")
                 return None
-            addr, length_scale = await self._tts_config()
+            addr, voice, length_scale = await self._tts_config()
             uri = f"ws://{addr}/ws"
-            logging.info("TTS preload: connecting to %s", uri)
+            logging.info("TTS preload: connecting to %s, voice=%s", uri, voice)
             try:
                 async with websockets.connect(uri) as ws:
                     req = json.dumps(
                         {
                             "text": text,
                             "engine": "piper",
-                            "voice": "default",
+                            "voice": voice,
                             "length_scale": length_scale,
                         }
                     )
