@@ -372,16 +372,16 @@ class NabMqttd(NabService):
             self._send_to_nabd(packet), loop
         )
 
-    async def _trigger_service(self, service_name: str, type: str):
+    async def _trigger_service(self, service_name: str, msg_type: str):
         try:
             now = datetime.datetime.now(datetime.timezone.utc)
+            past = now - datetime.timedelta(seconds=1)
             if service_name == "nabweatherd":
                 await self.client.set_async(
                     "nabweatherd",
                     {
-                        "next_performance_date": now,
-                        "next_performance_type": type,
-                        "force_next_performance": True,
+                        "next_performance_date": past,
+                        "next_performance_type": msg_type,
                     },
                 )
                 svc = self._service_registry.get("NabWeatherd")
@@ -391,9 +391,8 @@ class NabMqttd(NabService):
                 await self.client.set_async(
                     "nabairqualityd",
                     {
-                        "next_performance_date": now,
-                        "next_performance_type": type,
-                        "force_next_performance": True,
+                        "next_performance_date": past,
+                        "next_performance_type": msg_type,
                     },
                 )
                 svc = self._service_registry.get("NabAirqualityd")
@@ -405,8 +404,9 @@ class NabMqttd(NabService):
     async def _trigger_taichi(self):
         try:
             now = datetime.datetime.now(datetime.timezone.utc)
+            past = now - datetime.timedelta(seconds=1)
             await self.client.set_async(
-                "nabtaichid", {"next_taichi": now, "force_next_performance": True}
+                "nabtaichid", {"next_taichi": past}
             )
             svc = self._service_registry.get("NabTaichid")
             if svc:
