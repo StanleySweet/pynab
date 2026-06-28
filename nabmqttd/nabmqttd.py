@@ -372,7 +372,7 @@ class NabMqttd(NabService):
             self._send_to_nabd(packet), loop
         )
 
-    async def _trigger_service(self, service_name: str, msg_type: str):
+    async def _trigger_service(self, service_name: str, message_type: str):
         try:
             now = datetime.datetime.now(datetime.timezone.utc)
             past = now - datetime.timedelta(seconds=1)
@@ -381,7 +381,7 @@ class NabMqttd(NabService):
                     "nabweatherd",
                     {
                         "next_performance_date": past,
-                        "next_performance_type": msg_type,
+                        "next_performance_type": message_type,
                     },
                 )
                 svc = self._service_registry.get("NabWeatherd")
@@ -392,7 +392,7 @@ class NabMqttd(NabService):
                     "nabairqualityd",
                     {
                         "next_performance_date": past,
-                        "next_performance_type": msg_type,
+                        "next_performance_type": message_type,
                     },
                 )
                 svc = self._service_registry.get("NabAirqualityd")

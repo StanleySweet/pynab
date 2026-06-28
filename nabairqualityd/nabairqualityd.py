@@ -158,8 +158,8 @@ class NabAirqualityd(NabInfoCachedService):
         except Exception:
             return False
 
-    async def perform_additional(self, expiration, msg_type, info_data, config_t):
-        logging.info(f"perform_additional: msg_type={msg_type}, info_data={'None' if info_data is None else 'loaded'}")
+    async def perform_additional(self, expiration, message_type, info_data, config_t):
+        logging.info(f"perform_additional: message_type={message_type}, info_data={'None' if info_data is None else 'loaded'}")
         if info_data is None:
             logging.info("perform_additional: no data available")
             await self._send_to_nabd({
@@ -168,7 +168,7 @@ class NabAirqualityd(NabInfoCachedService):
                 "body": [{"audio": ["nabairqualityd/no-data-error.mp3"]}],
                 "expiration": expiration.isoformat(),
             })
-        elif msg_type == "today":
+        elif message_type == "today":
             cfg = await self.client.get_dict_async("nabairqualityd")
             logging.info(f"perform_additional: use_tts={cfg.use_tts}")
             message = NabAirqualityd.MESSAGES[info_data["data"]]

@@ -481,19 +481,19 @@ class NabInfoService(NabRecurrentService, ABC):
 
     @abstractmethod
     async def perform_additional(
-        self, expiration_date, msg_type, info_data, config
+        self, expiration_date, message_type, info_data, config
     ):
         """
         Perform whatever additional message, typically triggered from ASR
         or the website.
         """
 
-    async def perform(self, expiration_date, msg_type, config, *, force=False):
+    async def perform(self, expiration_date, message_type, config, *, force=False):
         if not force and self._nabd_asleep:
             logging.info(f"{type(self).__name__.lower()}: rabbit asleep, skipping")
             return
         service_name = self.__class__.__name__.lower()
-        logging.info(f"{service_name}: perform called with args={msg_type}")
+        logging.info(f"{service_name}: perform called with args={message_type}")
         info_data = await self._do_fetch_info_data(config)
         info_animation = self.get_animation(info_data)
         info_packet: dict = {"type": "info", "info_id": service_name}
@@ -501,9 +501,9 @@ class NabInfoService(NabRecurrentService, ABC):
             info_packet["animation"] = json.loads(info_animation)
         await self.send_wakeup()
         await self._send_to_nabd(info_packet)
-        if msg_type != "info":
+        if message_type != "info":
             await self.perform_additional(
-                expiration_date, msg_type, info_data, config
+                expiration_date, message_type, info_data, config
             )
 
     def compute_next(self, saved_date, saved_args, config, reason):
