@@ -1,5 +1,4 @@
 import os
-import socket
 from typing import Optional
 
 
@@ -24,11 +23,11 @@ def get_pi_serial() -> Optional[str]:
     return None
 
 
-def get_mdns_hostname() -> Optional[str]:
-    """Get mDNS hostname from system hostname."""
-    hostname = socket.gethostname()
-    if hostname:
-        return f"{hostname}.local"
+def get_mdns_hostname(prefix: str = "nabaztag") -> Optional[str]:
+    """Get mDNS hostname in format prefix-serial.local."""
+    serial = get_pi_serial()
+    if serial:
+        return f"{prefix}-{serial}.local"
     return None
 
 

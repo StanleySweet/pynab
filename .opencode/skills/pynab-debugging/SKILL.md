@@ -148,6 +148,8 @@ msg = json.dumps({"voice": voice, "text": text})
 
 ### Deploy code to Pi
 ```bash
+# SSH uses system hostname (Nabaztag.local)
+# TTS uses serial-based mDNS (nabaztag-<serial>.local)
 git push origin fl
 ssh pi@Nabaztag.local "cd /opt/pynab && git fetch stan && git checkout fl && git pull stan fl && sudo systemctl restart nabcore && sudo systemctl restart nabweb"
 ```
