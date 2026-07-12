@@ -6,6 +6,7 @@ from django.shortcuts import render
 from django.views.generic import TemplateView
 
 from nabcommon.config_client import ConfigClient
+from nabcommon.mDNS import get_tts_addr
 from nabcommon.nabservice import NabService
 
 from .models import Config
@@ -25,7 +26,7 @@ class SettingsView(TemplateView):
         config.enabled = request.POST.get("enabled") == "true"
         config.engine = request.POST.get("engine", "piper")
         config.voice = request.POST.get("voice", "fr_FR-upmc-medium")
-        config.tts_addr = request.POST.get("tts_addr", "pi4.local:8765")
+        config.tts_addr = request.POST.get("tts_addr", get_tts_addr("pi4.local:8765"))
         length_scale = request.POST.get("length_scale", "1.5")
         try:
             config.length_scale = float(length_scale)

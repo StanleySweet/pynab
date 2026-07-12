@@ -56,8 +56,9 @@ class Sound(object, metaclass=abc.ABCMeta):
                 "pt_BR": "pt_BR-edresson-medium",
                 "ja_JP": "ja_JP-kurenai-medium",
             }.get(user_locale, "default")
+        from nabcommon.mDNS import get_tts_addr
         return (
-            cfg.get("tts_addr", "pi4.local:8765"),
+            cfg.get("tts_addr", get_tts_addr("pi4.local:8765")),
             voice,
             cfg.get("length_scale", 1.5),
         )
